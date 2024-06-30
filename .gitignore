@@ -1,0 +1,10 @@
+archive/
+database/
+offtarget_user/
+target_user/
+.snakemake/
+upc_*
+primers_*.txt
+ref.fasta
+slurm*.out
+.DS_Store

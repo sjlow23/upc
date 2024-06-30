@@ -1,0 +1,8 @@
+channels:
+ - bioconda
+ - conda-forge
+
+dependencies:
+ - ispcr
+ - bbmap
+ - conda-forge::parallel

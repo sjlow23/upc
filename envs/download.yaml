@@ -1,0 +1,9 @@
+channels:
+ - bioconda
+ - conda-forge
+
+dependencies:
+ - conda-forge::ncbi-datasets-cli=16.18.1
+ - seqkit
+ - bioconda::ncbi-genome-download=0.3.3
+ 

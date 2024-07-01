@@ -14,6 +14,7 @@ dependencies:
  - conda-forge::r-stringr
  - conda-forge::r-scales>=1.3
  - r::r-rcolorbrewer
+ - bioconda::bioconductor-ggtreeextra
  - bioconda::bioconductor-ggtree
  - conda-forge::r-tidytree
  

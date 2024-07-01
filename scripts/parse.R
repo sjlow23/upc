@@ -29,14 +29,16 @@ args <- commandArgs(trailingOnly=TRUE)
 primers <- fread(args[1], header=F, sep="\t")
 target_genomes <- readLines(args[2])
 bed <- fread(args[3], header=F, sep="\t")
+tree <- read.tree(args[9])
+target_metadata <- fread(args[11], header=T, sep="\t")
+
+## Output file names
 full_stats <- args[4]
 primer_stats <- args[5]
 genome_stats <- args[6]
 barplot <- args[7]
 heatmap <- args[8]
-tree <- read.tree(args[9])
 treeplot <- args[10]
-target_metadata <- fread(args[11], header=T, sep="\t")
 
 genomecount <- length(target_genomes)
 
@@ -151,15 +153,21 @@ metadata <- summary_genome_mismatches
 
 metadata <- metadata %>% 
 	left_join(target_metadata, by="genome") %>%
+	mutate(label=genome) %>%
 	relocate(genome) %>%
-	relocate(country, .after=genome)
+	relocate(c(label, country, continent, year), .after=genome)
+metadata2 <- `rownames<-`(as.data.frame(metadata[-1]), metadata[[1]])
+metadata <- metadata2 %>% 
+	mutate(across(everything(), ~ifelse(.=="", NA, as.character(.))))
+rm(metadata2)
+
 
 # Define functions to plot tree with heatmap
 # Credit to: http://dmnfarrell.github.io/r/ggtree-heatmaps
 
-gettreedata <- function(tree, metadata) {
-	d <- metadata[match(tree$tip.label, metadata$genome), ]
-	d <- column_to_rownames(metadata, var="genome")
+gettreedata <- function(tree, meta) {
+	d<-meta[row.names(meta) %in% tree$tip.label,]
+	#row.names(d) <- d$genome
 	d$label <- row.names(d)
 	y <- full_join(as_tibble(tree), d, by='label')
 	y <- as.treedata(y)
@@ -182,14 +190,13 @@ get_color_mapping <- function(data, col, cmap){
 
 
 ggplottree <- function(tree, meta, cols=NULL, colors=NULL, cmaps=NULL, layout="rectangular",
-					   offset=10, tiplabel=FALSE, tipsize=3, tiplabelsize=5, tiplabelcol=NULL,
-					   align=FALSE, tipoffset=0) {
+					   offset=1, tiplabel=FALSE, tipsize=2, tiplabelsize=1, tiplabelcol=NULL,
+					   align=TRUE, tipoffset=0) {
 
 	y <- gettreedata(tree, meta)
-	if (layout == 'cladogram'){
+	if (layout == 'cladogram') {
 		p <- ggtree(y, layout='c', branch.length='none')
-	}
-	else {
+	} else {
 		p <- ggtree(y, layout=layout)
 	}
 
@@ -199,12 +206,12 @@ ggplottree <- function(tree, meta, cols=NULL, colors=NULL, cmaps=NULL, layout="r
 		}
 		return (p)
 	}
+
 	col <- cols[1]
 	if (!is.null(colors)) {
 		#use predefined colors
 		clrs <- colors
-	}
-	else {
+	} else {
 		#calculate colors from cmap
 		cmap <- cmaps[1]
 		df <- meta[tree$tip.label,][col]
@@ -213,7 +220,7 @@ ggplottree <- function(tree, meta, cols=NULL, colors=NULL, cmaps=NULL, layout="r
 	#print (clrs)
 	p <- p + new_scale_fill() +
 			geom_tippoint(mapping=aes(fill=.data[[col]]),size=tipsize,shape=21,stroke=0) +
-			scale_fill_manual(values=clrs, na.value="black")
+			scale_fill_manual(values=clrs, na.value="gray")
 
 	p2 <- p
 	if (length(cols)>1){
@@ -221,43 +228,45 @@ ggplottree <- function(tree, meta, cols=NULL, colors=NULL, cmaps=NULL, layout="r
 			col <- cols[i]
 			if (length(cmaps)>=i){
 				cmap <- cmaps[i]
-			}
-			else {
-				cmap = 'Greys'
+			} else {
+				cmap = 'Blues'
 			}
 			df <- meta[tree$tip.label,][col]
 			type <- class(df[col,])
 			print (type)
 			p2 <- p2 + new_scale_fill()
-			p2 <- gheatmap(p2, df, offset=i*offset, width=.08,
-					  colnames_angle=0, colnames_offset_y = .05)
+			p2 <- gheatmap(p2, df, offset=i*offset, width=1,
+					  colnames_angle=90, colnames_offset_y = .05, colnames_position="top")
 			if (type %in% c('numeric','integer')){
-				p2 <- p2 + scale_fill_gradient(low='#F8F699',high='#06A958', na.value="white")
-			}
-			else {
+				p2 <- p2 + scale_fill_gradient(low='#F8F699',high='#06A958', na.value="gray")
+			} else {
 				colors <- get_color_mapping(df, col, cmap)
-				p2 <- p2 + scale_fill_manual(values=colors, name=col, na.value="white")
+				p2 <- p2 + scale_fill_manual(values=colors, name=col, na.value="gray")
 			}
 		}
 	}
 
-	p2 <- p2 + theme_tree2(legend.text = element_text(size=20), legend.key.size = unit(1, 'cm'),
-						legend.position="left", plot.title = element_text(size=40))
-			guides(color = guide_legend(override.aes = list(size=10)))
+	p2 <- p2 + theme_tree2(legend.text = element_text(size=8), legend.key.size = unit(0.5, 'cm'),
+						legend.position="left", plot.title = element_text(size=12), legend.title=element_text(size=8))
+			guides(color = guide_legend(override.aes = list(size=8)))
 	if (tiplabel) {
 		if (!is.null(tiplabelcol)) {
 			p2 <- p2 + geom_tiplab(mapping=aes(label=.data[[tiplabelcol]]),
-								size=tiplabelsize, align=align,offset=tipoffset)
+								size=tiplabelsize, align=align, offset=tipoffset)
 		}
 		else {
-			p2 <- p2 + geom_tiplab(size=tiplabelsize, align=align,offset=tipoffset)
+			p2 <- p2 + geom_tiplab(size=tiplabelsize, align=align, offset=tipoffset)
 		}
 	}
 	return(p2)
 }
 
+mismatch_color_palette <- c("#6cd4c5", "#599e94", "#466964", "#333333", "#6d4b4b", "#e27c7c")
+paramcount <- ncol(metadata) - 2
 
-treeplot <- ggplottree(tree, metadata, layout='rect', cols=colnames(metadata[-1]),
-		cmaps=c('Set1','Set2','Blues'), tiplabel=TRUE, tipoffset=.1, tipsize=4, offset=.5)
 
-ggsave(treeplot, finaltree, width=12, height=13))
+finaltree <- ggplottree(tree, metadata, layout='circular', cols=colnames(metadata),
+		cmaps=c('Set1','Dark2','Blues','YlOrRd','YlOrRd','YlOrRd','YlOrRd','YlOrRd','YlOrRd'), 
+		tiplabel=TRUE, tipoffset=.1, tipsize=3, offset=0.8)
+
+ggsave(treeplot, finaltree, height=22, width=12)

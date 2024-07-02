@@ -190,12 +190,13 @@ target_metadata2 <- target_metadata2[-1]
 target_metadata2 <- as.data.frame(sapply(target_metadata2, as.character))
 rownames(target_metadata2) <- rn2
 
-heatmapData <- heatmapData %>% filter(rownames(.) %in% tree$tip.label)
+heatmap_data <- heatmap_data %>% 
+	filter(rownames(.) %in% tree$tip.label)
 
 ## Plot tree
-country.count <- length(unique(info$country))
-continent.count <- length(unique(info$continent))
-year.count <- length(unique(info$year))
+country.count <- length(unique(target_metadata$country))
+continent.count <- length(unique(target_metadata$continent))
+year.count <- length(unique(target_metadata$year))
 #cols <- colorRampPalette(brewer.pal(8, "Set1"))(nb.cols)
 
 country.colours <- unname(sample(palette36.colors()[names(palette36.colors())!="Purplish_White"], size=country.count))
@@ -249,7 +250,7 @@ p2 <- gheatmap(p1tmp, (target_metadata2 %>% select(year)),
 p2tmp <- addSmallLegend(p2) + new_scale_fill()
 
 # Plot mismatches as heatmap
-p3 <- gheatmap(p2tmp, heatmapData, 
+p3 <- gheatmap(p2tmp, heatmap_data, 
 	offset = 0.46, 
 	colnames_position="top", 
 	colnames_angle=90, 
@@ -261,4 +262,4 @@ p3 <- gheatmap(p2tmp, heatmapData,
   					na.value="#d3d3d3", name="Overall primer mismatch count")
 p3 <- addSmallLegend(p3)
 
-ggsave(treeplot, finaltree, height=22, width=12)
+ggsave(treeplot, finaltree, height=22, width=18)

@@ -34,7 +34,7 @@ rule primer_coverage_target:
 			metadata=NULL
 		fi
 
-		Rscript scripts/parse.R {output.primerinfo} {params.outdir}/genomes_target.txt \
+		Rscript scripts/parse_new.R {output.primerinfo} {params.outdir}/genomes_target.txt \
 			{params.bed} \
 			{output.fullstats} \
 			{output.primerstats} \
@@ -44,7 +44,6 @@ rule primer_coverage_target:
 			{input.tree} \
 			{output.treeplot} \
 			$metadata
-		
+	
 		touch {output.status}
 		"""
-

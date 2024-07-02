@@ -119,6 +119,8 @@ rule prepare_primers:
 	threads: 8
 	shell:
 		"""
+		awk -F "\\t" '{{ print $1, toupper($2), toupper($3), toupper($4) }}' OFS="\\t" {input.primers} > {input.primers}.2
+		mv {input.primers}.2 {input.primers}
 		cut -f1-3 {input.primers} > {output.primers}
 		cut -f1,4 {input.primers} | sed 's/^/>/1' | sed 's/\\t/\\n/g' > {output.probes}
 		touch {output.status}

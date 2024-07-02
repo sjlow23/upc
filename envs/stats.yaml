@@ -6,13 +6,15 @@ channels:
 dependencies:
  - r-dplyr
  - r-tidyr
- - r-ggplot2
+ - conda-forge::r-ggplot2>=3.5
  - r-ggnewscale
  - r-data.table
  - r-ape
  - r-tibble
  - conda-forge::r-stringr
  - conda-forge::r-scales>=1.3
+ - conda-forge::r-phytools
+ - conda-forge::r-Polychrome
  - r::r-rcolorbrewer
  - bioconda::bioconductor-ggtreeextra
  - bioconda::bioconductor-ggtree

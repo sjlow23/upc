@@ -6,5 +6,6 @@ target_user/
 upc_*
 primers_*.txt
 ref.fasta
+ref_flu.fasta
 slurm*.out
 .DS_Store

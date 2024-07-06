@@ -8,7 +8,6 @@ rule primer_coverage_target:
 		primerstats = OUTDIR + "primer_statistics/primer_statistics.tsv",
 		genomestats = OUTDIR + "primer_statistics/genome_statistics.tsv",
 		barplot = OUTDIR + "primer_statistics/barplot.pdf",
-		heatmap = OUTDIR + "primer_statistics/heatmap.pdf",
 		treeplot = OUTDIR + "primer_statistics/treeplot.pdf",
 		status = OUTDIR + "status/primerstats.txt"
 	conda: "../envs/stats.yaml"
@@ -19,10 +18,11 @@ rule primer_coverage_target:
 		fasta = OUTDIR + "ispcr_target/target_amplicons.fasta",
 		ispcr_dir = OUTDIR + "ispcr_target",
 		output_dir = OUTDIR + "primer_statistics",
-		sum_mismatch = 5,
 		metadata = OUTDIR + "metadata_target.tsv"
 	shell:
 		"""
+		mkdir -p {params.output_dir}
+
 		grep ">" {params.fasta} | sed "s/>//g" | sed "s/ /\\t/g" | sed "s/:/\\t/1" > {output.primerinfo}
 		awk -F "\\t" '{{$2=gensub(/[+-]/,"\\t","g",$2)}}1' OFS="\\t" {output.primerinfo} > {output.primerinfo}.2
 		mv {output.primerinfo}.2 {output.primerinfo}
@@ -36,12 +36,12 @@ rule primer_coverage_target:
 
 		Rscript scripts/parse_new.R {output.primerinfo} {params.outdir}/genomes_target.txt \
 			{params.bed} \
+			{input.tree} \
+			$metadata \
 			{output.fullstats} \
 			{output.primerstats} \
 			{output.genomestats} \
 			{output.barplot} \
-			{output.heatmap} \
-			{input.tree} \
 			{output.treeplot} \
 			$metadata
 	

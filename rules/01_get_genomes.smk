@@ -13,7 +13,7 @@ checkpoint download_target:
 		domain = DOMAIN,
 		db = DB,
 		use_assembly = USE_ASSEMBLY,
-		assembly_level = ASSEMBLY_LEVEL if "ASSEMBLY_LEVEL" in ('complete', 'chromosome', 'scaffold', 'contig') else [],
+		assembly_level = ASSEMBLY_LEVEL,
 		outdir = OUTDIR,
 	threads: 4
 	shell:
@@ -24,22 +24,34 @@ checkpoint download_target:
 			then
 				datasets download virus genome taxon {params.spid} --complete-only --filename target.zip
 				dataformat tsv virus-genome --package target.zip > {params.outdir}/metadata_target.tsv
+
+				unzip target.zip -d {params.targetdir}
+				rm target.zip
+				seqkit split --by-id -O {params.targetdir} {params.targetdir}/ncbi_dataset/data/genomic.fna
+				ls {params.targetdir}/*.fna | parallel -j {threads} 'rename "genomic.part_" "" "{{}}"'  
+				rm -rf {params.targetdir}/ncbi_dataset
+				rm {params.targetdir}/README.md
 			else
 				datasets download genome taxon {params.spid} \
 				--assembly-source {params.db} \
 				--assembly-version latest \
 				--assembly-level {params.assembly_level} \
 				--include genome \
+				--dehydrated \
 				--filename target.zip
 				dataformat tsv genome --package target.zip > {params.outdir}/metadata_target.tsv
-			fi
-			unzip target.zip -d {params.targetdir}
-			rm target.zip
+				
+				unzip target.zip -d {params.targetdir}
 
-			seqkit split --by-id -O {params.targetdir} {params.targetdir}/ncbi_dataset/data/genomic.fna
-			ls {params.targetdir}/*.fna | parallel -j {threads} 'rename "genomic.part_" "" "{{}}"'  
-			rm -rf {params.targetdir}/ncbi_dataset
-			rm {params.targetdir}/README.md
+				shuf -n 1000 {params.targetdir}/ncbi_dataset/fetch.txt > {params.targetdir}/ncbi_dataset/tmp
+				mv {params.targetdir}/ncbi_dataset/tmp {params.targetdir}/ncbi_dataset/fetch.txt
+				datasets rehydrate --directory {params.targetdir}
+				rm target.zip
+				mv {params.targetdir}/ncbi_dataset/data/GC?_*/*.fna {params.targetdir}/
+				rm -rf {params.targetdir}/ncbi_dataset {params.targetdir}/README.md
+
+				find {params.targetdir} -type f -name 'GC*.fna' -exec bash -c 'mv "$1" "$(dirname "$1")/$(basename "$1" | cut -d"_" -f1,2).fna"' _ {{}} \;
+			fi
 		
 		elif [[ {params.download_target} == "no" ]]
 		then
@@ -69,7 +81,7 @@ checkpoint download_offtarget:
 		domain = DOMAIN,
 		db = DB,
 		use_assembly = USE_ASSEMBLY,
-		assembly_level = ASSEMBLY_LEVEL if "ASSEMBLY_LEVEL" in ('complete', 'chromosome', 'scaffold', 'contig') else [],
+		assembly_level = ASSEMBLY_LEVEL,
 		outdir = OUTDIR,
 	threads: 4
 	shell:
@@ -80,22 +92,37 @@ checkpoint download_offtarget:
 			then
 				datasets download virus genome taxon {params.spid} --complete-only --filename offtarget.zip
 				dataformat tsv virus-genome --package offtarget.zip > {params.outdir}/metadata_offtarget.tsv
+
+				unzip offtarget.zip -d {params.offtargetdir}
+				rm offtarget.zip
+				seqkit split --by-id -O {params.offtargetdir} {params.offtargetdir}/ncbi_dataset/data/genomic.fna
+				ls {params.offtargetdir}/*.fna | parallel -j {threads} 'rename "genomic.part_" "" "{{}}"'  
+				rm -rf {params.offtargetdir}/ncbi_dataset
+				rm {params.offtargetdir}/README.md
 			else
 				datasets download genome taxon {params.spid} \
 				--assembly-source {params.db} \
 				--assembly-version latest \
 				--assembly-level {params.assembly_level} \
 				--include genome \
+				--dehydrated \
 				--filename offtarget.zip
-				dataformat tsv genome --package offtarget.zip > {params.outdir}/metadata_offtarget.tsv
-			fi
-			unzip offtarget.zip -d {params.offtargetdir}
-			rm offtarget.zip
+				
+			
+				unzip offtarget.zip -d {params.offtargetdir}
 
-			seqkit split --by-id -O {params.offtargetdir} {params.offtargetdir}/ncbi_dataset/data/genomic.fna
-			ls {params.offtargetdir}/*.fna | parallel -j {threads} 'rename "genomic.part_" "" "{{}}"'  
-			rm -rf {params.offtargetdir}/ncbi_dataset
-			rm {params.offtargetdir}/README.md
+				shuf -n 1000 {params.offtargetdir}/ncbi_dataset/fetch.txt > {params.offtargetdir}/ncbi_dataset/tmp
+				mv {params.offtargetdir}/ncbi_dataset/tmp {params.offtargetdir}/ncbi_dataset/fetch.txt
+				datasets rehydrate --directory {params.offtargetdir}
+				dataformat tsv genome --package offtarget.zip > {params.outdir}/metadata_offtarget.tsv
+				
+				rm offtarget.zip
+				mv {params.offtargetdir}/ncbi_dataset/data/GC?_*/*.fna {params.offtargetdir}/
+				rm -rf {params.offtargetdir}/ncbi_dataset {params.offtargetdir}/README.md
+
+				find {params.offtargetdir} -type f -name 'GC*.fna' -exec bash -c 'mv "$1" "$(dirname "$1")/$(basename "$1" | cut -d"_" -f1,2).fna"' _ {{}} \;
+			fi
+			
 		
 		elif [[ {params.download_offtarget} == "no" ]]
 		then
@@ -117,11 +144,17 @@ rule prepare_primers:
 		probes = OUTDIR + "probes.fasta",
 		status = OUTDIR + "status/prepare_primers.txt",
 	threads: 8
+	conda: "../envs/download.yaml"
 	shell:
 		"""
 		awk -F "\\t" '{{ print $1, toupper($2), toupper($3), toupper($4) }}' OFS="\\t" {input.primers} > {input.primers}.2
 		mv {input.primers}.2 {input.primers}
+
+		python scripts/expand_iupac.py {input.primers} {input.primers}.2
+		mv {input.primers}.2 {input.primers}
+
 		cut -f1-3 {input.primers} > {output.primers}
 		cut -f1,4 {input.primers} | sed 's/^/>/1' | sed 's/\\t/\\n/g' > {output.probes}
+
 		touch {output.status}
 		"""

@@ -124,12 +124,13 @@ rule probesearch_amplicon_target:
 	output:
 		status = OUTDIR + "status/probesearch_target.txt",
 	conda: "../envs/ispcr.yaml"
-	threads: 4
+	threads: 16
 	params:
 		ampdir = OUTDIR + "ispcr_target/amplicon",
 		probedir_nomm = directory(OUTDIR + "ispcr_target/probes/no_mismatch"),
 		probedir_2mm = directory(OUTDIR + "ispcr_target/probes/2_mismatch"),
 		ispcrdir = directory(OUTDIR + "ispcr_target"),
+		aln_threads = 1,
 		outdir = OUTDIR
 	shell:
 		"""
@@ -147,7 +148,7 @@ rule probesearch_amplicon_target:
 			perfectmode \
 			maxsites=100000 \
 			overwrite=f \
-			threads={threads} \
+			threads={params.aln_threads} \
 			outm={params.probedir_nomm}/"{{}}"_nomm.sam'
 
 			cat {params.outdir}/genomes_target_primerhits.txt | \
@@ -162,7 +163,7 @@ rule probesearch_amplicon_target:
 			editfilter=1 \
 			maxsites=100000 \
 			overwrite=f \
-			threads={threads} \
+			threads={params.aln_threads} \
 			outm={params.probedir_2mm}/"{{}}"_2mm.sam'
 
 			find {params.probedir_nomm} -type f -name "*_nomm.sam" -empty | xargs --no-run-if-empty rm

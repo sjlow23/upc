@@ -32,25 +32,26 @@ library(ggnewscale)
 #$2: genome list file
 #$3: bed file
 #$4: joined stats output file
-#$5: per primer statistics output file
-#$6: per genome statistics output file
-#$7: barplot output file
-#$8: heatmap output file
+#$5: target metadata file
+#$6: full statistics output file
+#$7: per primer statistics output file
+#$8: per genome statistics output file
+#$9: barplot output file
+#$10: treeplot output file
 
 args <- commandArgs(trailingOnly=TRUE)
 
 primers <- fread(args[1], header=F, sep="\t")
 target_genomes <- readLines(args[2])
 bed <- fread(args[3], header=F, sep="\t")
-tree <- read.tree(args[9])
-target_metadata <- fread(args[11], header=T, sep="\t")
+tree <- read.tree(args[4])
+target_metadata <- fread(args[5], header=T, sep="\t")
 
 ## Output file names
-full_stats <- args[4]
-primer_stats <- args[5]
-genome_stats <- args[6]
-barplot <- args[7]
-heatmap <- args[8]
+full_stats <- args[6]
+primer_stats <- args[7]
+genome_stats <- args[8]
+barplot <- args[9]
 treeplot <- args[10]
 
 genomecount <- length(target_genomes)
@@ -250,16 +251,18 @@ p2 <- gheatmap(p1tmp, (target_metadata2 %>% select(year)),
 p2tmp <- addSmallLegend(p2) + new_scale_fill()
 
 # Plot mismatches as heatmap
+width_mismatches <- 0.1 * nrow(primer_stats)
+
 p3 <- gheatmap(p2tmp, heatmap_data, 
 	offset = 0.46, 
 	colnames_position="top", 
 	colnames_angle=90, 
 	colnames_offset_y = 0.46, 
-	width=0.4, hjust=0, 
+	width=width_mismatches, hjust=0, 
 	font.size=1.8, 
 	color="#909090") +
   scale_fill_manual(values=mismatch.colours, 
   					na.value="#d3d3d3", name="Overall primer mismatch count")
 p3 <- addSmallLegend(p3)
 
-ggsave(treeplot, finaltree, height=22, width=18)
+ggsave(treeplot, plot=p3, device="pdf", height=20, width=20)

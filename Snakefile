@@ -90,9 +90,6 @@ rule all:
 		OUTDIR + "status/check_split.txt",
 		OUTDIR + "status/align_amplicon_target.txt",
 		OUTDIR + "status/align_amplicon_offtarget.txt",
-		
-		# get_primersets_t,
-		# get_primersets_ot,
 		OUTDIR + "status/phylogeny.txt",
 		OUTDIR + "phylogeny/metadata_subset.tsv",
 		OUTDIR + "status/primerstats.txt",

@@ -1,4 +1,4 @@
-configfile: "config/config.yaml"
+configfile: "config/config_flu.yaml"
 
 
 OUTDIR = config["OUTDIR"]
@@ -93,17 +93,20 @@ rule all:
 		
 		# get_primersets_t,
 		# get_primersets_ot,
-		OUTDIR + "status/align_genomes.txt",
-		OUTDIR + "status/tree.txt",
+		OUTDIR + "status/phylogeny.txt",
+		OUTDIR + "phylogeny/metadata_subset.tsv",
 		OUTDIR + "status/primerstats.txt",
 
-# if config["USE_ASSEMBLY"] == "yes":
-# 	include: "rules/01_get_genomes_assembly.smk"
-# else:
-# 	include: "rules/01_get_genomes.smk"
+
 
 include: "rules/01_get_genomes.smk"
 include: "rules/02_primersearch.smk"
 include: "rules/03_align.smk"
+
+if config["USE_ASSEMBLY"] == "yes":
+	include: "rules/03a_fastani.smk"
+else:
+	include: "rules/03b_mafft.smk"
+	
 include: "rules/04_statistics.smk"
 

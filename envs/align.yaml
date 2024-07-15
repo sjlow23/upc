@@ -4,3 +4,4 @@ channels:
 dependencies:
  - mafft
  - seqkit
+ - fasttree=2.1.11

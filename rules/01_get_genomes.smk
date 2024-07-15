@@ -43,7 +43,7 @@ checkpoint download_target:
 				
 				unzip target.zip -d {params.targetdir}
 
-				shuf -n 1000 {params.targetdir}/ncbi_dataset/fetch.txt > {params.targetdir}/ncbi_dataset/tmp
+				shuf -n 500 {params.targetdir}/ncbi_dataset/fetch.txt > {params.targetdir}/ncbi_dataset/tmp
 				mv {params.targetdir}/ncbi_dataset/tmp {params.targetdir}/ncbi_dataset/fetch.txt
 				datasets rehydrate --directory {params.targetdir}
 				rm target.zip
@@ -108,7 +108,6 @@ checkpoint download_offtarget:
 				--dehydrated \
 				--filename offtarget.zip
 				
-			
 				unzip offtarget.zip -d {params.offtargetdir}
 
 				shuf -n 1000 {params.offtargetdir}/ncbi_dataset/fetch.txt > {params.offtargetdir}/ncbi_dataset/tmp
@@ -141,20 +140,22 @@ rule prepare_primers:
 		primers = PRIMERS,
 	output:
 		primers = OUTDIR + "primers.txt",
+		primers_expand = OUTDIR + "primers_expand.txt",
 		probes = OUTDIR + "probes.fasta",
 		status = OUTDIR + "status/prepare_primers.txt",
+	params:
+		outdir = OUTDIR,
 	threads: 8
 	conda: "../envs/download.yaml"
 	shell:
 		"""
-		awk -F "\\t" '{{ print $1, toupper($2), toupper($3), toupper($4) }}' OFS="\\t" {input.primers} > {input.primers}.2
-		mv {input.primers}.2 {input.primers}
-
-		python scripts/expand_iupac.py {input.primers} {input.primers}.2
-		mv {input.primers}.2 {input.primers}
-
-		cut -f1-3 {input.primers} > {output.primers}
-		cut -f1,4 {input.primers} | sed 's/^/>/1' | sed 's/\\t/\\n/g' > {output.probes}
+		mkdir -p {params.outdir}
+		awk -F "\\t" '{{ print $1, toupper($2), toupper($3), toupper($4) }}' OFS="\\t" {input.primers} > {params.outdir}/primerstmp.txt
+		python scripts/expand_iupac.py {params.outdir}/primerstmp.txt {output.primers_expand}
+		
+		cut -f2-4 {output.primers_expand} > {output.primers}
+		cut -f2,5 {output.primers_expand} | sed 's/^/>/1' | sed 's/\\t/\\n/g' > {output.probes}
+		rm {params.outdir}/primerstmp.txt
 
 		touch {output.status}
 		"""

@@ -36,5 +36,5 @@ with open(output_file, 'w') as file:
 		name_counter = 1
 		for comb in combinations:
 			expanded_name = f"{name}_{name_counter}"
-			file.write(f"{expanded_name}\t{comb[0]}\t{comb[1]}\t{comb[2]}\n")
+			file.write(f"{name}\t{expanded_name}\t{comb[0]}\t{comb[1]}\t{comb[2]}\n")
 			name_counter += 1

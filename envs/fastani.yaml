@@ -1,0 +1,10 @@
+channels:
+ - bioconda
+ - conda-forge
+
+dependencies:
+ - fastani
+ - conda-forge::r-phangorn
+ - conda-forge::r-ape
+ - conda-forge::r-data.table
+ - conda-forge::r-igraph

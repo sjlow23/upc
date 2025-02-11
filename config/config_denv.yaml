@@ -1,0 +1,34 @@
+# Run parameters
+OUTDIR: "upc_denv_20250211/"
+CPU: 16
+SUBSAMPLE_TARGET: 200 #either max #genomes to keep or "no"
+SUBSAMPLE_OFFTARGET: 200
+PROBES: "no"
+
+
+# Insilico PCR parameters
+PRIMERS: "input/primers_denv.txt"
+MAX_AMPLICON_SIZE: 2000
+MIN_PERFECT: 7
+TILE_SIZE: 11
+STEP_SIZE: 5
+
+# Genome download parameters
+DOWNLOAD_TARGET: "yes"
+DOWNLOAD_OFFTARGET: "yes"
+DB: "GenBank"
+TARGET_SP_TAXID: 3052464
+OFFTARGET_SP_TAXID: 3044782
+#TARGET_TAXID: ""
+#OFFTARGET_TAXID: ""
+DOMAIN: "viral"
+ASSEMBLY_LEVEL: "complete" #chromosome,complete,scaffold,contig
+USE_ASSEMBLY: "no"
+IS_FLU: "no"
+
+# Phylogeny parameters
+DEREP: "yes"
+
+# User-provided genomes (comment out if not providing)
+#USER_TARGET: "target_user"
+#USER_OFFTARGET: "offtarget_user"

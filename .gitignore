@@ -8,4 +8,6 @@ primers_*.txt
 ref.fasta
 ref_flu.fasta
 slurm*.out
+notes.txt
+dag.pdf
 .DS_Store

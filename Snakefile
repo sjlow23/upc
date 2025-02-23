@@ -1,73 +1,88 @@
 configfile: "config/config_denv.yaml"
 
+OUTDIR = directory(config["params"]["OUTDIR"])
+CPU = config["params"]["CPU"]
+SUBSAMPLE_TARGET = config["params"]["SUBSAMPLE_TARGET"]
+SUBSAMPLE_OFFTARGET = config["params"]["SUBSAMPLE_OFFTARGET"]
+PRIMERS = config["params"]["PRIMERS"]
 
-OUTDIR = config["OUTDIR"]
-CPU = config["CPU"]
-SUBSAMPLE_TARGET = config["SUBSAMPLE_TARGET"]
-SUBSAMPLE_OFFTARGET = config["SUBSAMPLE_OFFTARGET"]
-PROBES = config["PROBES"]
+MAX_AMPLICON_SIZE = config["ispcr"]["MAX_AMPLICON_SIZE"]
+MIN_PERFECT = config["ispcr"]["MIN_PERFECT"]
+TILE_SIZE = config["ispcr"]["TILE_SIZE"]
+STEP_SIZE = config["ispcr"]["STEP_SIZE"]
+MIN_GOOD = config["ispcr"]["MIN_GOOD"]
 
-PRIMERS = config["PRIMERS"]
-MAX_AMPLICON_SIZE = config["MAX_AMPLICON_SIZE"]
-MIN_PERFECT = config["MIN_PERFECT"]
-TILE_SIZE = config["TILE_SIZE"]
-STEP_SIZE = config["STEP_SIZE"]
+DOMAIN = config["datasets"]["DOMAIN"]
+ASSEMBLY_LEVEL = config["datasets"]["ASSEMBLY_LEVEL"]
+DB = config["datasets"]["DB"]
+USE_ASSEMBLY = config["datasets"]["USE_ASSEMBLY"]
+IS_FLU = config["datasets"]["IS_FLU"]
 
-DOWNLOAD_TARGET = config["DOWNLOAD_TARGET"]
-DOWNLOAD_OFFTARGET = config["DOWNLOAD_OFFTARGET"]
-DEREP = config["DEREP"]
-DATABASE = "database/"
-DOMAIN = config["DOMAIN"]
-ASSEMBLY_LEVEL = config["ASSEMBLY_LEVEL"]
-DB = config["DB"]
-USE_ASSEMBLY = config["USE_ASSEMBLY"]
-IS_FLU = config["IS_FLU"]
+if "PROBES" in config.get("params", {}):
+	PROBES = config["params"]["PROBES"]
+else:
+	# Check if the number of columns in PRIMERS is 4
+	with open(PRIMERS, "r") as f:
+		first_line = f.readline().strip()
+		num_columns = len(first_line.split("\t"))  
+	if num_columns == 4:
+		PROBES = "yes"
+	else:
+		PROBES = "no"
 
-if "USER_TARGET" in config:
-	USER_TARGET = config["USER_TARGET"]
-if "USER_OFFTARGET" in config:
-	USER_OFFTARGET = config["USER_OFFTARGET"]
-if "TARGET_SP_TAXID" in config:
-	TARGET_SP_TAXID = config["TARGET_SP_TAXID"]
-if "OFFTARGET_SP_TAXID" in config:
-	OFFTARGET_SP_TAXID = config["OFFTARGET_SP_TAXID"]
-if "TARGET_TAXID" in config:
-	TARGET_TAXID = config["TARGET_TAXID"]
-if "OFFTARGET_TAXID" in config:
-	OFFTARGET_TAXID = config["OFFTARGET_TAXID"]
+DOWNLOAD_TARGET = config["download"]["DOWNLOAD_TARGET"]
+DOWNLOAD_OFFTARGET = config["download"]["DOWNLOAD_OFFTARGET"]
 
-## Need check statement- only one of TARGET_SP_TAXID and TARGET_TAXID can be present
-## Need check statement- only one of OFFTARGET_SP_TAXID and OFFTARGET_TAXID can be present
+if "USER_TARGET" in config.get("custom", {}):
+    USER_TARGET = config["custom"]["USER_TARGET"]
+if "USER_OFFTARGET" in config.get("custom", {}):
+	USER_OFFTARGET = config["custom"]["USER_OFFTARGET"]
+if "TARGET_SP_TAXID" in config.get("datasets", {}):
+	TARGET_SP_TAXID = config["datasets"]["TARGET_SP_TAXID"]
+if "OFFTARGET_SP_TAXID" in config.get("datasets", {}):
+	OFFTARGET_SP_TAXID = config["datasets"]["OFFTARGET_SP_TAXID"]
+# if "TARGET_TAXID" in config:
+# 	TARGET_TAXID = config["TARGET_TAXID"]
+# if "OFFTARGET_TAXID" in config:
+# 	OFFTARGET_TAXID = config["OFFTARGET_TAXID"]
+
+
 
 GENOMES_TARGET = OUTDIR + "genomes_target/"
-GENOMES_OFFTARGET = OUTDIR + "genomes_offtarget/" 
+GENOMES_OFFTARGET = OUTDIR + "genomes_offtarget/"
+GENOMES_OFFTARGET_TMP = OUTDIR + "genomes_offtarget_tmp/"
 
 # Use as target in rule all to get list of target genomes
 def get_target_genomes(wildcards):
 	target_dir = checkpoints.download_target.get(**wildcards).output[0]
-	#global GENOMES_T
 	filelist = expand(os.path.join(target_dir, "{genome}.fna"), 
 					genome = glob_wildcards(os.path.join(target_dir, "{genome}.fna")).genome)
-	# GENOMES_T, = glob_wildcards(os.path.join(target_dir, "{genome}.fna"))
-	# filelist = expand(os.path.join(target_dir, "{genome}.fna"), genome = GENOMES_T.genome)
 	return filelist
 
 # Use as target in rule all to get list of off-target genomes
-def get_offtarget_genomes(wildcards):
+def get_offtarget_genomes_tmp(wildcards):
 	offtarget_dir = checkpoints.download_offtarget.get(**wildcards).output[0]
 	filelist = expand(os.path.join(offtarget_dir, "{genome}.fna"), 
 					genome = glob_wildcards(os.path.join(offtarget_dir, "{genome}.fna")).genome)
 	return filelist
 
+# Get offtarget genomes after removal of overlaps
+def get_offtarget_genomes(wildcards):
+	offtarget_dir = checkpoints.remove_overlaps.get(**wildcards).output[0]
+	filelist = expand(os.path.join(offtarget_dir, "{genome}.fna"), 
+					genome = glob_wildcards(os.path.join(offtarget_dir, "{genome}.fna")).genome)
+	return filelist
+
+
 def get_target_ispcr(wildcards):
 	target_dir = checkpoints.download_target.get(**wildcards).output[0]
-	ISPCR_T = expand(OUTDIR + "ispcr_target/bed/{genome}.bed", 
+	ISPCR_T = expand(OUTDIR + "ispcr_target/amplicon/{genome}.fasta", 
 					genome = glob_wildcards(os.path.join(target_dir, "{genome}.fna")).genome)
 	return ISPCR_T
 
 def get_offtarget_ispcr(wildcards):
-	offtarget_dir = checkpoints.download_offtarget.get(**wildcards).output[0]
-	ISPCR_OT = expand(OUTDIR + "ispcr_offtarget/bed/{genome}.bed", 
+	offtarget_dir = checkpoints.remove_overlaps.get(**wildcards).output[0]
+	ISPCR_OT = expand(OUTDIR + "ispcr_offtarget/amplicon/{genome}.fasta", 
 					genome = glob_wildcards(os.path.join(offtarget_dir, "{genome}.fna")).genome)
 	return ISPCR_OT
 
@@ -108,79 +123,81 @@ def get_primers_offtarget_tsv(wildcards):
 # Gather probe results from checkpoints
 ############################################################
 def get_probes_t(wildcards):
-	target_dir = checkpoints.parse_blast.get(**wildcards).output.probe_target_dir
+	target_dir = checkpoints.parse_blast_target.get(**wildcards).output.probe_target_dir
 	TARGET = expand(OUTDIR + "ispcr_target/probes/{probe}.fasta", 
 					probe = glob_wildcards(os.path.join(target_dir, "{probe}.fasta")).probe)
 	return TARGET
 
 def get_probes_ot(wildcards):
-	offtarget_dir = checkpoints.parse_blast.get(**wildcards).output.probe_offtarget_dir
+	offtarget_dir = checkpoints.parse_blast_offtarget.get(**wildcards).output.probe_offtarget_dir
 	OFFTARGET = expand(OUTDIR + "ispcr_offtarget/probes/{probe}.fasta", 
 					probe = glob_wildcards(os.path.join(offtarget_dir, "{probe}.fasta")).probe)
 	return OFFTARGET
 
 def get_probes_tsv_t(wildcards):
-	target_dir = checkpoints.parse_blast.get(**wildcards).output.probe_target_dir
+	target_dir = checkpoints.parse_blast_target.get(**wildcards).output.probe_target_dir
 	TARGET = expand(OUTDIR + "ispcr_target/probe_parsed/{probe}.tsv", 
 					probe = glob_wildcards(os.path.join(target_dir, "{probe}.fasta")).probe)
 	return TARGET
 
 def get_probes_tsv_ot(wildcards):
-	offtarget_dir = checkpoints.parse_blast.get(**wildcards).output.probe_offtarget_dir
+	offtarget_dir = checkpoints.parse_blast_offtarget.get(**wildcards).output.probe_offtarget_dir
 	OFFTARGET = expand(OUTDIR + "ispcr_offtarget/probe_parsed/{probe}.tsv", 
 					probe = glob_wildcards(os.path.join(offtarget_dir, "{probe}.fasta")).probe)
 	return OFFTARGET
 
 
 
-if config["PROBES"] == "no":
-	rule all:
-		input:
-			OUTDIR + "status/prepare_primers.txt",
-			OUTDIR + "status/agg_target.txt",
-			OUTDIR + "status/agg_offtarget.txt",
-			OUTDIR + "status/collate_ispcr_target.txt",
-			OUTDIR + "status/collate_ispcr_offtarget.txt",
-			get_primersets_t,
-			get_primersets_ot,
-			OUTDIR + "status/collate_primers_target.txt",
-			OUTDIR + "status/collate_primers_offtarget.txt",
-			OUTDIR + "status/summary_primers_target.txt",
-			OUTDIR + "status/summary_primers_offtarget.txt",
-			
-else:
-	rule all:
-		input:
-			OUTDIR + "status/prepare_primers.txt",
-			OUTDIR + "status/prepare_probes.txt",
-			OUTDIR + "status/agg_target.txt",
-			OUTDIR + "status/agg_offtarget.txt",
-			OUTDIR + "status/collate_ispcr_target.txt",
-			OUTDIR + "status/collate_ispcr_offtarget.txt",
-			get_primersets_t,
-			get_primersets_ot,
-			OUTDIR + "status/collate_primers_target.txt",
-			OUTDIR + "status/collate_primers_offtarget.txt",
-			OUTDIR + "status/summary_primers_target.txt",
-			OUTDIR + "status/summary_primers_offtarget.txt",
-			get_probes_t,
+# Define common files that are always included in rule_all
+rule_all_input = [
+	OUTDIR + "status/prepare_primers.txt",
+	OUTDIR + "status/agg_target.txt",
+	OUTDIR + "status/collate_ispcr_target.txt",
+	get_primersets_t,
+	OUTDIR + "status/collate_primers_target.txt",
+	OUTDIR + "status/summary_primers_target.txt",
+]
+
+# Handle "PROBES" condition to include probe-related files only if PROBES != "no"
+if config["params"]["PROBES"] != "no" and not config["datasets"]["OFFTARGET_SP_TAXID"]:
+	rule_all_input.extend([
+		prepare_probes,
+		OUTDIR + "status/prepare_probes.txt",
+		get_probes_t,
+		OUTDIR + "status/collate_probes_target.txt",
+		OUTDIR + "status/summary_probes_target.txt"
+	
+	])
+
+
+# Handle "GENOMES_OFFTARGET" condition to include primer-related files only if config["OFFTARGET_SP_TAXID"]
+if config["datasets"]["OFFTARGET_SP_TAXID"]:
+	rule_all_input.extend([
+	OUTDIR + "status/agg_offtarget.txt",
+	OUTDIR + "status/reagg_offtarget.txt",
+	OUTDIR + "status/collate_ispcr_offtarget.txt",
+	get_primersets_ot,
+	OUTDIR + "status/collate_primers_offtarget.txt",
+	OUTDIR + "status/summary_primers_offtarget.txt"
+	])
+	if config["params"]["PROBES"] != "no":
+		rule_all_input.extend([
 			get_probes_ot,
 			OUTDIR + "status/collate_probes_target.txt",
-			OUTDIR + "status/collate_probes_offtarget.txt",
-			OUTDIR + "status/summary_probes_target.txt",
-			OUTDIR + "status/summary_probes_offtarget.txt"
+			OUTDIR + "status/summary_probes_target.txt"
+		])
+
+rule all:
+	input:
+		rule_all_input
 
 
 
-include: "rules/01_get_genomes_denv.smk"
-include: "rules/02_ispcr.smk"
-include: "rules/03_align_primers.smk"
-include: "rules/04_align_probes.smk"
 
-# if config["USE_ASSEMBLY"] == "yes":
-# 	include: "rules/03a_fastani.smk"
-# else:
-# 	include: "rules/03b_mafft.smk"
-	
-# include: "rules/04_statistics.smk"
 
+include: "rules/01_get_genomes_target.smk"
+include: "rules/02_get_genomes_offtarget.smk"
+include: "rules/03_prepare_primers_probes.smk"
+include: "rules/04_ispcr.smk"
+include: "rules/05_align_primers.smk"
+include: "rules/06_align_probes.smk"

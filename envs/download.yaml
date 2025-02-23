@@ -3,7 +3,7 @@ channels:
  - conda-forge
 
 dependencies:
- - conda-forge::ncbi-datasets-cli=16.40.1
+ - conda-forge::ncbi-datasets-cli=16.41.0
  - seqkit
  - bioconda::ncbi-genome-download=0.3.3
  - biopython

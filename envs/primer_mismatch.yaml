@@ -6,8 +6,11 @@ channels:
 dependencies:
  - r-dplyr
  - r-tidyr
+ - r-stringr
  - r-data.table
  - r-seqinr
+ - r-gt
+ - r-webshot2
  - bioconda::bioconductor-biostrings
  - seqkit
  - csvtk

@@ -6,6 +6,7 @@ library(dplyr)
 library(tidyr)
 library(data.table)
 
+
 args <- commandArgs(trailingOnly=TRUE)
 # Read alignment file
 aln <- readDNAStringSet(args[1])
@@ -92,7 +93,8 @@ compare_to_reference <- function(sequences, reference, type) {
 	final_result <- final_result %>%
 		left_join(all_sites_df, by="genome") %>%
 		mutate(mutation = case_when(target!="0" ~ paste0(reference, as.character(position), target), TRUE ~ "NA")) %>% 
-		mutate(type=type, mutation = case_when(mutation=="NA" ~ "", TRUE ~ mutation))
+		mutate(type=type, mutation = case_when(mutation=="NA" ~ "", TRUE ~ mutation)) %>%
+		distinct()
 
 	return(final_result)
 }
@@ -111,6 +113,16 @@ primer_result <- primer_result %>%
 # Write primer result
 if (nrow(primer_result) > 0) {
 	fwrite(primer_result, file=output, col.names=T, row.names=F, sep="\t", quote=F)
+
+	# # Convert to gt table
+	# gt_table <- gt(primer_result) %>%
+	# 	tab_spanner(label = "Primer Mismatches", columns = starts_with("position")) %>%
+	# 	tab_spanner(label = "Sequence Mismatches", columns = starts_with("mutation")) 
+	
+	# # Save gt table as PDF (ensure the webshot library is installed for PDF generation)
+	# gt_table %>%
+	# 	# The file path for your PDF
+	# 	gtsave(filename = paste0(tools::file_path_sans_ext(output), "_result.pdf"), path = ".")
 } else {
 	file.create(output)
 }

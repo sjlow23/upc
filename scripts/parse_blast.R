@@ -9,8 +9,7 @@ library(seqinr)
 args <- commandArgs(trailingOnly=TRUE)
 
 
-blast_target <- fread(args[1], header=F, sep="\t")
-blast_offtarget <- fread(args[2], header=F, sep="\t")
+blast <- fread(args[1], header=F, sep="\t")
 
 
 process_df <- function(mydf, outfile) {
@@ -27,11 +26,4 @@ process_df <- function(mydf, outfile) {
 	
 }
 
-
-process_df(blast_target, outfile=args[3])
-process_df(blast_offtarget, outfile=args[4])
-
-
-#split fasta by probe for target and offtarget
-#align, then process similarly to primers
-
+process_df(blast, outfile=args[2])

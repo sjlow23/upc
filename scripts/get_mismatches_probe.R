@@ -84,7 +84,8 @@ compare_to_reference <- function(sequences, reference, type) {
 		left_join(all_sites_df, by="genome") %>%
 		#filter(target!="0") %>%
 	 mutate(mutation = case_when(target!=0 ~ paste0(reference, position, target), TRUE ~ "NA")) %>% 
-	 mutate(type=type, mutation = case_when(mutation=="NA" ~ "", TRUE ~ mutation))
+	 mutate(type=type, mutation = case_when(mutation=="NA" ~ "", TRUE ~ mutation)) %>%
+	 distinct()
 	
 	
 	return(final_result)
@@ -97,8 +98,8 @@ probe_result <- compare_to_reference(sequences=probe, reference=probe_ref, type=
 probe_result <- probe_result %>%
 	mutate(ori_probe=probe_set) %>%
 	#separate(probe_set, into=c("ori_probe", "probe"), sep="_", remove=F) %>%
-	select(-probe) %>%
-	relocate(ori_probe, .after=probe_set) %>%
+	select(-probe_set) %>%
+	relocate(ori_probe) %>%
 	relocate(genome, .after=probe_seq)
 
 

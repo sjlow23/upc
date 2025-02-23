@@ -4,6 +4,7 @@
 library(Biostrings)
 library(dplyr)
 library(tidyr)
+library(stringr)
 library(data.table)
 
 args <- commandArgs(trailingOnly=TRUE)
@@ -49,10 +50,11 @@ summary_pergenome <- primer_result %>%
 	filter(mismatch==min(mismatch)) %>%
 	filter(mismatch!=0) %>% 
 	ungroup() %>% 
-	group_by(genome, ori_primer, type) %>% 
+	group_by(genome, ori_primer, primer_seq, type) %>% 
 	summarize(count_mismatches=n_distinct(mutation), 
 						positions=toString(unique(position)),
-						mutations=toString(unique(mutation)))
+						mutations=toString(unique(mutation)),
+						binding_sites=toString(unique(binding_site)))
 
 if (nrow(summary_pergenome) > 0) {
 	fwrite(summary_pergenome, file=output_pergenome, col.names=T, row.names=F, sep="\t", quote=F)
@@ -63,15 +65,23 @@ if (nrow(summary_pergenome) > 0) {
 
 # Collapse pergenome output into mutation combinations frequency per primerset
 summary_permutation_combo <- summary_pergenome %>%
-	group_by(ori_primer, type, mutations) %>% 
-	summarize(count=n_distinct(genome), genomes_with_mutation=toString(unique(genome))) %>%
+	group_by(ori_primer, primer_seq, binding_sites, type, mutations) %>% 
+	summarize(count_genomes_with_mutation=n_distinct(genome), 
+	          genomes_with_mutation=toString(unique(genome)),
+			  primer_sequence=toString(unique(primer_seq)),
+              binding_site=toString(unique(binding_sites))) %>%
 	ungroup() %>%
 	left_join(amplified_summary, by="ori_primer") %>%
-	mutate(perc_with_mutation_amplified=round(count/count_genomes_amplified*100, 2),
-		   perc_with_mutation_total=round(count/origenomecount*100, 2)) %>%
+	mutate(count_db_genomes = origenomecount,
+		   perc_with_mutation_amplified=round(count_genomes_with_mutation/count_genomes_amplified*100, 2),
+		   perc_with_mutation_total=round(count_genomes_with_mutation/origenomecount*100, 2)) %>%
+	mutate(position = str_extract_all(mutations, "(?<=\\D)(\\d+)(?=\\D)")) %>%
+	mutate(position = sapply(position, function(x) paste(x, collapse = ", "))) %>%
 	relocate(genomes_with_mutation, .after=last_col()) %>%
-	arrange(ori_primer, type)
-		   
+	select(-primer_seq, -binding_sites) %>%
+  	relocate(count_genomes_with_mutation, .after=binding_site) %>%
+  	arrange(ori_primer, type)
+
 
 if (nrow(summary_permutation_combo) > 0) {
 	fwrite(summary_permutation_combo, file=output_permutation_combo, col.names=T, row.names=F, sep="\t", quote=F)
@@ -132,6 +142,31 @@ if (nrow(summary_pergenome_mismatches) > 0) {
 } else {
 	file.create(output_grouped)
 }
+
+
+# Write out primer summary table to pdf using gt
+# library(gt)
+
+# gt_summary <- gt(summary_permutation_combo)
+# gt_summary <- gt_summary %>%
+#  tab_header(title="Primer Summary") %>%
+#  cols_label(ori_primer="Primer Set", type="Type", mutations="Mutations", count_genomes_with_mutation="Genomes with Mutation", perc_with_mutation_amplified="Percentage with Mutation (Amplified)", perc_with_mutation_total="Percentage with Mutation (Total)") %>%
+#  fmt_number(columns=vars(count_genomes_with_mutation), decimals=0) %>%
+#  fmt_number(columns=vars(perc_with_mutation_amplified, perc_with_mutation_total), decimals=2) %>%
+#  tab_spanner(label="Genomes with Mutation", columns=genomes_with_mutation, locations=col_span("genomes_with_mutation")) %>%
+#  tab_spanner(label="Mutations", columns=mutations, locations=col_span("mutations")) %>%
+#  tab_spanner(label="Primer Sequence", columns=primer_sequence, locations=col_span("primer_sequence")) %>%
+#  tab_spanner(label="Genomes Amplified", columns=count_genomes_amplified, locations=col_span("count_genomes_amplified")) %>%
+#  tab_spanner(label="Genomes in Database", columns=count_db_genomes, locations=col_span("count_db_genomes")) %>%
+#  tab_spanner(label="Percentage with Mutation", columns=perc_with_mutation_amplified, locations=col_span("perc_with_mutation_amplified")) %>%
+#  tab_spanner(label="Percentage with Mutation", columns=perc_with_mutation_total, locations=col_span("perc_with_mutation_total")) %>%
+#  tab_spanner(label="Genomes with Mutation", columns=count_genomes_with_mutation, locations=col_span("count_genomes_with_mutation")) %>%
+#  tab_spanner(label="Genomes with Mutation", columns=genomes_with_mutation, locations=col_span("genomes_with_mutation"))
+
+#gt::gtsave(gt_summary, filename="primer_summary.pdf")
+
+
+
 
 
 

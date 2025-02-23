@@ -4,6 +4,7 @@
 library(Biostrings)
 library(dplyr)
 library(tidyr)
+library(stringr)
 library(data.table)
 
 args <- commandArgs(trailingOnly=TRUE)
@@ -64,11 +65,13 @@ if (nrow(summary_pergenome) > 0) {
 # Collapse pergenome output into mutation combinations frequency per probeset
 summary_permutation_combo <- summary_pergenome %>%
 	group_by(ori_probe, type, mutations) %>% 
-	summarize(count=n_distinct(genome), genomes_with_mutation=toString(unique(genome))) %>%
+	summarize(count_genomes_with_mutation=n_distinct(genome), genomes_with_mutation=toString(unique(genome))) %>%
 	ungroup() %>%
 	left_join(amplified_summary, by="ori_probe") %>%
-	mutate(perc_with_mutation_present=round(count/count_genomes_present*100, 2),
-		   perc_with_mutation_total=round(count/origenomecount*100, 2)) %>%
+	mutate(perc_with_mutation_present=round(count_genomes_with_mutation/count_genomes_present*100, 2),
+		   perc_with_mutation_total=round(count_genomes_with_mutation/origenomecount*100, 2)) %>%
+	mutate(position = str_extract_all(mutations, "(?<=\\D)(\\d+)(?=\\D)")) %>%
+	mutate(position = sapply(position, function(x) paste(x, collapse = ", "))) %>%
 	relocate(genomes_with_mutation, .after=last_col()) %>%
 	arrange(ori_probe, type)
 		   

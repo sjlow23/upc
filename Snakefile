@@ -16,7 +16,7 @@ DOMAIN = config["datasets"]["DOMAIN"]
 ASSEMBLY_LEVEL = config["datasets"]["ASSEMBLY_LEVEL"]
 DB = config["datasets"]["DB"]
 USE_ASSEMBLY = config["datasets"]["USE_ASSEMBLY"]
-IS_FLU = config["datasets"]["IS_FLU"]
+#IS_FLU = config["datasets"]["IS_FLU"]
 
 if "PROBES" in config.get("params", {}):
 	PROBES = config["params"]["PROBES"]
@@ -30,9 +30,11 @@ else:
 	else:
 		PROBES = "no"
 
+
 DOWNLOAD_TARGET = config["download"]["DOWNLOAD_TARGET"]
 DOWNLOAD_OFFTARGET = config["download"]["DOWNLOAD_OFFTARGET"]
 
+# Check if these are defined in the config file
 if "USER_TARGET" in config.get("custom", {}):
     USER_TARGET = config["custom"]["USER_TARGET"]
 if "USER_OFFTARGET" in config.get("custom", {}):
@@ -41,6 +43,8 @@ if "TARGET_SP_TAXID" in config.get("datasets", {}):
 	TARGET_SP_TAXID = config["datasets"]["TARGET_SP_TAXID"]
 if "OFFTARGET_SP_TAXID" in config.get("datasets", {}):
 	OFFTARGET_SP_TAXID = config["datasets"]["OFFTARGET_SP_TAXID"]
+
+
 # if "TARGET_TAXID" in config:
 # 	TARGET_TAXID = config["TARGET_TAXID"]
 # if "OFFTARGET_TAXID" in config:

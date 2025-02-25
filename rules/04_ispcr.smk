@@ -63,7 +63,7 @@ checkpoint ispcr_target:
 		#bed = OUTDIR + "ispcr_target/bed/{genome}.bed",
 		amp = OUTDIR + "ispcr_target/amplicon/{genome}.fasta",
 	conda: "../envs/ispcr.yaml"
-	threads: 4
+	threads: 1
 	params:
 		outdir = OUTDIR,
 		min_perfect = MIN_PERFECT,
@@ -92,7 +92,7 @@ checkpoint ispcr_offtarget:
 		#bed = OUTDIR + "ispcr_offtarget/bed/{genome}.bed",
 		amp = OUTDIR + "ispcr_offtarget/amplicon/{genome}.fasta",
 	conda: "../envs/ispcr.yaml"
-	threads: 4
+	threads: 1
 	params:
 		outdir = OUTDIR,
 		min_perfect = MIN_PERFECT,
@@ -132,6 +132,13 @@ rule collate_ispcr_target:
 
 		#sed -i 's/ /--/1' {output.targetamp}
 		seqkit rmdup -s -D {params.targetdir}/duplicates_target.txt -o {output.targetdedup} {output.targetamp}
+		
+		if [[ -s {params.targetdir}/duplicates_target.txt ]]; then
+			cut -f2 {params.targetdir}/duplicates_target.txt | sed 's/, /\\t/1' | 
+				awk -F "\\t" '{{ print $2, $1, $1 }}' OFS="\t" | \
+				sed 's/\\t/, /1' > {params.targetdir}/duplicates_target.tab
+		fi
+		
 		rm -rf {params.targetdir}/bed {params.targetdir}/amplicon
 
 		touch {output.status}
@@ -156,6 +163,12 @@ rule collate_ispcr_offtarget:
 
 		#sed -i 's/ /--/1' {output.offtargetamp}
 		seqkit rmdup -s -D {params.offtargetdir}/duplicates_offtarget.txt -o {output.offtargetdedup} {output.offtargetamp}
+		
+		if [[ -s {params.offtargetdir}/duplicates_offtarget.txt ]]; then
+			cut -f2 {params.offtargetdir}/duplicates_offtarget.txt | sed 's/, /\\t/1' | 
+				awk -F "\\t" '{{ print $2, $1, $1 }}' OFS="\t" | \
+				sed 's/\\t/, /1' > {params.offtargetdir}/duplicates_offtarget.tab
+		fi
 		rm -rf {params.offtargetdir}/bed {params.offtargetdir}/amplicon
 
 		if [[ -s {output.offtargetdedup} ]]

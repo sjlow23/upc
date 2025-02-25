@@ -65,22 +65,33 @@ if (nrow(summary_pergenome) > 0) {
 
 
 # Collapse pergenome output into mutation combinations frequency per primerset
+# Alert levels for mismatches: 
+# High: mutation at last base
+# Medium: mutation at any of last 3 bases, OR at least 2 mutations
+# Low: mutation at any other location
+
 summary_permutation_combo <- summary_pergenome %>%
+	select(-count_mismatches) %>%
 	group_by(ori_primer, primer_seq, binding_sites, type, mutations) %>% 
-	summarize(count_genomes_with_mutation=n_distinct(genome), 
-	          genomes_with_mutation=toString(unique(genome)),
-			  primer_sequence=toString(unique(primer_seq)),
-              binding_site=toString(unique(binding_sites))) %>%
+	summarize(count_genomes_with_mutation = n_distinct(genome), 
+	          genomes_with_mutation = toString(unique(genome)),
+			  primer_sequence = toString(unique(primer_seq)),
+              binding_site = toString(unique(binding_sites))) %>%
 	ungroup() %>%
-	left_join(amplified_summary, by="ori_primer") %>%
+	left_join(amplified_summary, by = "ori_primer") %>%
 	mutate(count_db_genomes = origenomecount,
-		   perc_with_mutation_amplified=round(count_genomes_with_mutation/count_genomes_amplified*100, 2),
-		   perc_with_mutation_total=round(count_genomes_with_mutation/origenomecount*100, 2)) %>%
+		   perc_with_mutation_amplified = round(count_genomes_with_mutation/count_genomes_amplified*100, 2),
+		   perc_with_mutation_total = round(count_genomes_with_mutation/origenomecount*100, 2)) %>%
 	mutate(position = str_extract_all(mutations, "(?<=\\D)(\\d+)(?=\\D)")) %>%
-	mutate(position = sapply(position, function(x) paste(x, collapse = ", "))) %>%
-	relocate(genomes_with_mutation, .after=last_col()) %>%
-	select(-primer_seq, -binding_sites) %>%
-  	relocate(count_genomes_with_mutation, .after=binding_site) %>%
+	mutate(position = sapply(position, function(x) paste(x, collapse = ", ")),
+			count_mismatches = str_count(mutations, pattern=",") + 1) %>%
+	mutate(alert = case_when(position == nchar(binding_site) ~ "High",
+							 position >= nchar(binding_site) - 2 | count_mismatches >= 2 ~ "Medium",
+							TRUE ~ "Low")) %>%
+	relocate(genomes_with_mutation, .after = last_col()) %>%
+	select(-primer_seq, -binding_sites, -count_mismatches) %>%
+  	relocate(count_genomes_with_mutation, .after = binding_site) %>%
+	relocate(alert, .after = mutations) %>%
   	arrange(ori_primer, type)
 
 
@@ -93,14 +104,14 @@ if (nrow(summary_permutation_combo) > 0) {
 
 # Per primerset ori and position combo, mutations
 summary_perprimer <- primer_result %>% 
-	mutate(mismatch=case_when(mutation=="" ~ 0, TRUE ~ 1)) %>%
+	mutate(mismatch=case_when(mutation == "" ~ 0, TRUE ~ 1)) %>%
 	group_by(ori_primer, genome, position, type) %>% 
-	filter(mismatch==min(mismatch)) %>%
-	filter(mismatch!=0) %>% 
+	filter(mismatch == min(mismatch)) %>%
+	filter(mismatch != 0) %>% 
 	ungroup() %>%
 	group_by(ori_primer, position, mutation, type) %>% 
-	summarize(genomes_with_mutation=toString(unique(genome)),
-						count_genomes_with_mutation=n_distinct(genome))
+	summarize(genomes_with_mutation = toString(unique(genome)),
+						count_genomes_with_mutation = n_distinct(genome))
 
 if (nrow(summary_perprimer) > 0) {
 	fwrite(summary_perprimer, file=output_perprimer, col.names=T, row.names=F, sep="\t", quote=F)
@@ -112,13 +123,13 @@ if (nrow(summary_perprimer) > 0) {
 # Can't add all possible combinations, as those that fail to amplify are not included in ori primers tsv
 # Stats is only for genomes that had amplification
 summary_pergenome_mismatches <- primer_result %>% 
-	mutate(mismatch=case_when(mutation=="" ~ 0, TRUE ~ 1)) %>%
+	mutate(mismatch = case_when(mutation=="" ~ 0, TRUE ~ 1)) %>%
 	group_by(genome, ori_primer, position, type) %>% 
-	filter(mismatch==min(mismatch)) %>%
-	filter(mismatch!=0) %>% 
+	filter(mismatch == min(mismatch)) %>%
+	filter(mismatch != 0) %>% 
 	ungroup() %>% 
 	group_by(genome, ori_primer, type) %>%
-	summarize(mismatches=n_distinct(position))
+	summarize(mismatches = n_distinct(position))
 
 if (nrow(summary_pergenome_mismatches) > 0) {
 	fwrite(summary_pergenome_mismatches, file=output_pergenome_mismatches, col.names=T, row.names=F, sep="\t", quote=F)

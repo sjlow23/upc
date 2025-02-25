@@ -15,7 +15,6 @@ checkpoint split_amplicons_target:
 
 		seqkit split --by-id --by-id-prefix "" -j {threads} --two-pass --update-faidx \
 			--id-regexp '^\S+\s+(\w+)' --out-dir {output.alndir} {input.target}
-
 		"""
 
 checkpoint split_amplicons_offtarget:
@@ -65,9 +64,87 @@ rule align_split_offtarget:
 		ginsi --thread {threads} {input.fasta} > {output.aln}
 		"""
 
+
+rule lookup_aln_target:
+	input:
+		target = rules.align_split_target.output.aln,
+	output:
+		tab = OUTDIR + "ispcr_target/primer_alignments/{primer}.tab",
+	threads: 4
+	conda: "../envs/seqkit.yaml"
+	shell:
+		"""
+		if [[ -s {input.target} ]]; then
+			seqkit fx2tab {input.target} | sed 's/ /\\t/g' | sed 's/\\t$//g' > {output.tab}
+		else
+			touch {output.tab}
+		fi
+		"""
+		
+
+## Account for no off-target hits
+rule lookup_aln_offtarget:
+	input:
+		offtarget = rules.align_split_offtarget.output.aln,
+	output:
+		tab = OUTDIR + "ispcr_offtarget/primer_alignments/{primer}.tab",
+	threads: 4
+	conda: "../envs/seqkit.yaml"
+	shell:
+		"""
+		if [[ -s {input.offtarget} ]]; then
+			seqkit fx2tab {input.offtarget} | sed 's/ /\\t/g' | sed 's/\\t$//g' > {output.tab}
+		else
+			touch {output.tab}
+		fi
+		"""
+
+
+rule merge_duplicates_target:
+	input:
+		aln = OUTDIR + "ispcr_target/primer_alignments/{primer}.tab",
+	output:
+		full = OUTDIR + "ispcr_target/primer_alignments/{primer}.tsv",
+		aln = OUTDIR + "ispcr_target/primer_alignments/{primer}_all.aln",
+	params:
+		lookup = OUTDIR + "ispcr_target/duplicates_target.tab",
+	conda: "../envs/primer_mismatch.yaml"
+	shell:
+		"""
+		if [[ -s {params.lookup} ]]; then 
+			Rscript scripts/merge_duplicates.R {params.lookup} {input.aln} {output.full}
+			awk -F "," '{{ print ">"$1, $3, $4, $5, $6, "\\n"$7 }}' {output.full} > {output.aln}
+		else
+			Rscript scripts/merge_duplicates.R NULL {input.aln} {output.full}
+			awk -F "," '{{ print ">"$1, $3, $4, $5, $6, "\\n"$7 }}' {output.full} > {output.aln}
+		fi
+		"""
+
+
+rule merge_duplicates_offtarget:
+	input:
+		aln = OUTDIR + "ispcr_offtarget/primer_alignments/{primer}.tab",
+	output:
+		full = OUTDIR + "ispcr_offtarget/primer_alignments/{primer}.tsv",
+		aln = OUTDIR + "ispcr_offtarget/primer_alignments/{primer}_all.aln",
+	params:
+		lookup = OUTDIR + "ispcr_offtarget/duplicates_offtarget.tab"
+	conda: "../envs/primer_mismatch.yaml"
+	shell:
+		"""
+		if [[ -s {params.lookup} ]]; then 
+			Rscript scripts/merge_duplicates.R {params.lookup} {input.aln} {output.full}
+			awk -F "," '{{ print ">"$1, $3, $4, $5, $6, "\\n"$7 }}' {output.full} > {output.aln}
+		else
+			Rscript scripts/merge_duplicates.R NULL {input.aln} {output.full}
+			awk -F "," '{{ print ">"$1, $3, $4, $5, $6, "\\n"$7 }}' {output.full} > {output.aln}
+		fi
+		"""
+
+
 rule parse_aln_target:
 	input:
-		aln = OUTDIR + "ispcr_target/primer_alignments/{primer}.aln",
+		aln = OUTDIR + "ispcr_target/primer_alignments/{primer}_all.aln",
 	output:
 		tsv = OUTDIR + "ispcr_target/primer_parsed/{primer}.tsv"
 	threads: 1
@@ -81,7 +158,7 @@ rule parse_aln_target:
 
 rule parse_aln_offtarget:
 	input:
-		aln = OUTDIR + "ispcr_offtarget/primer_alignments/{primer}.aln",
+		aln = OUTDIR + "ispcr_offtarget/primer_alignments/{primer}_all.aln",
 	output:
 		tsv = OUTDIR + "ispcr_offtarget/primer_parsed/{primer}.tsv"
 	threads: 1

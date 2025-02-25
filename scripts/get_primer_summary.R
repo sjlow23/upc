@@ -30,7 +30,8 @@ combinations <- expand.grid(
 # Number of genomes amplified per primerset (including perfect matches)
 amplified_summary <- primer_result %>%
   group_by(ori_primer) %>%
-  summarize(count_genomes_amplified=n_distinct(genome))
+  summarize(count_genomes_amplified=n_distinct(genome),
+  			perc_genomes_amplified=round(n_distinct(genome)/origenomecount*100, 2))
 
 
 # Positions with mismatches to keep in df

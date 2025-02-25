@@ -18,7 +18,7 @@ rule probe_blast_target:
 			-subject {input.amplicons} \
 			-task blastn-short \
 			-qcov_hsp_perc 70 \
-			-outfmt "6 qseqid sseqid slen length pident nident mismatch qseq sseq" > {output.blast}
+			-outfmt "6 qseqid sseqid slen length pident nident mismatch qseq" > {output.blast}
 
 		sed -i "s/--/\t/g" {output.blast}
 		sed -i "s/:/\t/1" {output.blast}
@@ -76,13 +76,15 @@ checkpoint parse_blast_target:
 	threads: 16
 	params:
 		probe_target = OUTDIR + "ispcr_target/probes",
+		probes = OUTDIR + "probes.fasta"
 	shell:
 		"""
-		Rscript scripts/parse_blast.R {input.target} {output.target}
+		Rscript scripts/parse_blast.R {params.probes} {input.target} {output.target}
 		seqkit split --by-id --id-regexp ".*--(.+)--.*" --by-id-prefix "" -O {params.probe_target} {output.target}
 		
 		touch {output.status}
 		"""
+
 
 checkpoint parse_blast_offtarget:
 	input:
@@ -94,12 +96,13 @@ checkpoint parse_blast_offtarget:
 	conda: "../envs/primer_mismatch.yaml"
 	threads: 16
 	params:
-		probe_offtarget = OUTDIR + "ispcr_offtarget/probes"
+		probe_offtarget = OUTDIR + "ispcr_offtarget/probes",
+		probes = OUTDIR + "probes.fasta"
 	shell:
 		"""
 		if [[ -s {input.offtarget} ]]
 		then
-			Rscript scripts/parse_blast.R {input.offtarget} {output.offtarget}
+			Rscript scripts/parse_blast.R {params.probes} {input.offtarget} {output.offtarget}
 			seqkit split --by-id --id-regexp ".*--(.+)--.*" --by-id-prefix "" -O {output.probe_offtarget_dir} {output.offtarget}
 		else
 			mkdir -p {output.probe_offtarget_dir}
@@ -119,7 +122,7 @@ rule align_probes_target:
 	params:
 	shell:
 		"""
-		mafft --thread {threads} {input.probes} > {output.aln}
+		ginsi --thread {threads} {input.probes} > {output.aln}
 		"""
 
 rule align_probes_offtarget:
@@ -132,7 +135,7 @@ rule align_probes_offtarget:
 	params:
 	shell:
 		"""
-		mafft --thread {threads} {input.probes} > {output.aln}
+		ginsi --thread {threads} {input.probes} > {output.aln}
 		"""
 	
 rule parse_probe_target:

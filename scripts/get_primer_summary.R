@@ -144,33 +144,7 @@ if (nrow(summary_pergenome_mismatches) > 0) {
 }
 
 
-# Write out primer summary table to pdf using gt
-# library(gt)
 
-# gt_summary <- gt(summary_permutation_combo)
-# gt_summary <- gt_summary %>%
-#  tab_header(title="Primer Summary") %>%
-#  cols_label(ori_primer="Primer Set", type="Type", mutations="Mutations", count_genomes_with_mutation="Genomes with Mutation", perc_with_mutation_amplified="Percentage with Mutation (Amplified)", perc_with_mutation_total="Percentage with Mutation (Total)") %>%
-#  fmt_number(columns=vars(count_genomes_with_mutation), decimals=0) %>%
-#  fmt_number(columns=vars(perc_with_mutation_amplified, perc_with_mutation_total), decimals=2) %>%
-#  tab_spanner(label="Genomes with Mutation", columns=genomes_with_mutation, locations=col_span("genomes_with_mutation")) %>%
-#  tab_spanner(label="Mutations", columns=mutations, locations=col_span("mutations")) %>%
-#  tab_spanner(label="Primer Sequence", columns=primer_sequence, locations=col_span("primer_sequence")) %>%
-#  tab_spanner(label="Genomes Amplified", columns=count_genomes_amplified, locations=col_span("count_genomes_amplified")) %>%
-#  tab_spanner(label="Genomes in Database", columns=count_db_genomes, locations=col_span("count_db_genomes")) %>%
-#  tab_spanner(label="Percentage with Mutation", columns=perc_with_mutation_amplified, locations=col_span("perc_with_mutation_amplified")) %>%
-#  tab_spanner(label="Percentage with Mutation", columns=perc_with_mutation_total, locations=col_span("perc_with_mutation_total")) %>%
-#  tab_spanner(label="Genomes with Mutation", columns=count_genomes_with_mutation, locations=col_span("count_genomes_with_mutation")) %>%
-#  tab_spanner(label="Genomes with Mutation", columns=genomes_with_mutation, locations=col_span("genomes_with_mutation"))
-
-#gt::gtsave(gt_summary, filename="primer_summary.pdf")
-
-
-
-
-
-
-##################################################################################################################
 
 
 

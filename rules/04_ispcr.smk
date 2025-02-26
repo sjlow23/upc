@@ -38,10 +38,11 @@ checkpoint remove_overlaps:
 		if [[ -s {params.outdir}/remove ]] 
 		then
 			for i in `cat {params.outdir}/remove`; do rm {params.offtargetdir}/"$i"; done
+			rm {params.outdir}/remove
 		fi
 		
 		mv {params.offtargetdir} {output.offtargetdir}
-		rm {params.outdir}/remove {params.outdir}/target_genomes.txt {params.outdir}/offtarget_genomes.txt
+		rm {params.outdir}/target_genomes.txt {params.outdir}/offtarget_genomes.txt
 		
 		touch {output.status}
 		"""

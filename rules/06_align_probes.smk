@@ -18,7 +18,7 @@ rule probe_blast_target:
 			-subject {input.amplicons} \
 			-task blastn-short \
 			-qcov_hsp_perc 70 \
-			-outfmt "6 qseqid sseqid slen length pident nident mismatch qseq" > {output.blast}
+			-outfmt "6 qseqid sseqid slen length pident nident mismatch sseq" > {output.blast}
 
 		sed -i "s/--/\t/g" {output.blast}
 		sed -i "s/:/\t/1" {output.blast}
@@ -50,7 +50,7 @@ rule probe_blast_offtarget:
 			-subject {input.amplicons} \
 			-task blastn-short \
 			-qcov_hsp_perc 70 \
-			-outfmt "6 qseqid sseqid slen length pident nident mismatch qseq sseq" > {output.blast}
+			-outfmt "6 qseqid sseqid slen length pident nident mismatch sseq" > {output.blast}
 
 			sed -i "s/--/\t/g" {output.blast}
 			sed -i "s/:/\t/1" {output.blast}
@@ -211,8 +211,6 @@ rule collate_probes_offtarget:
 
 		touch {output.status}
 		"""
-
-
 
 rule summary_probes_target:
 	input:

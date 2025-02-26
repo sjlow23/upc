@@ -86,5 +86,6 @@ checkpoint download_target:
 		else
 			echo "Target genomes provided"
 			cp -r {params.user_target} {params.targetdir}
+			for i in {params.targetdir}/*.fna; do basename $i >> {params.outdir}/target_genomes.txt; done
 		fi
 		"""

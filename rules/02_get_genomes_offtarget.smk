@@ -74,14 +74,13 @@ checkpoint download_offtarget:
 				find {params.offtargetdir} -type f -name 'GC*.fna' -exec bash -c 'mv "$1" "$(dirname "$1")/$(basename "$1" | cut -d"_" -f1,2).fna"' _ {{}} \;
 
 			fi
-			
+			find {params.offtargetdir} -name "*.fna" | awk -F "/" '{{ print $NF }}' >> {params.outdir}/offtarget_genomes.txt
+
 		else 
 			echo "Off-target genomes provided"
 			cp -r {params.user_offtarget} {params.offtargetdir}
 			for i in {params.offtargetdir}/*.fna; do basename $i >> {params.outdir}/offtarget_genomes.txt; done
 		fi
-
-		find {params.offtargetdir} -name "*.fna" | awk -F "/" '{{ print $NF }}' >> {params.outdir}/offtarget_genomes.txt
 
 		"""
 

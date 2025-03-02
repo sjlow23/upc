@@ -1,3 +1,5 @@
+import os
+
 configfile: "config/config_denv.yaml"
 
 OUTDIR = directory(config["params"]["OUTDIR"])
@@ -11,6 +13,11 @@ MIN_PERFECT = config["ispcr"]["MIN_PERFECT"]
 TILE_SIZE = config["ispcr"]["TILE_SIZE"]
 STEP_SIZE = config["ispcr"]["STEP_SIZE"]
 MIN_GOOD = config["ispcr"]["MIN_GOOD"]
+
+if config["amplicon"]["MAX_MISMATCHES"]:
+	MAX_MISMATCH = config["amplicon"]["MAX_MISMATCHES"]
+else:
+	MAX_MISMATCH = 6
 
 DOMAIN = config["datasets"]["DOMAIN"]
 ASSEMBLY_LEVEL = config["datasets"]["ASSEMBLY_LEVEL"]
@@ -31,8 +38,16 @@ else:
 		PROBES = "no"
 
 
-DOWNLOAD_TARGET = config["download"]["DOWNLOAD_TARGET"]
-DOWNLOAD_OFFTARGET = config["download"]["DOWNLOAD_OFFTARGET"]
+if not config["custom"]["USER_TARGET"]:
+	DOWNLOAD_TARGET = "yes"
+else:
+	DOWNLOAD_TARGET = "no"
+
+if not config["custom"]["USER_OFFTARGET"]:
+	DOWNLOAD_OFFTARGET = "yes"
+else:
+	DOWNLOAD_OFFTARGET = "no"
+
 
 # Check if these are defined in the config file
 if "USER_TARGET" in config.get("custom", {}):
@@ -52,9 +67,12 @@ if "OFFTARGET_SP_TAXID" in config.get("datasets", {}):
 
 
 
-GENOMES_TARGET = OUTDIR + "genomes_target/"
-GENOMES_OFFTARGET = OUTDIR + "genomes_offtarget/"
-GENOMES_OFFTARGET_TMP = OUTDIR + "genomes_offtarget_tmp/"
+GENOMES_TARGET = os.path.join(OUTDIR, "genomes_target/")
+GENOMES_OFFTARGET = os.path.join(OUTDIR, "genomes_offtarget/")
+GENOMES_OFFTARGET_TMP = os.path.join(OUTDIR, "genomes_offtarget_tmp/")
+
+TARGET_NOHITS = os.path.join(OUTDIR, "target_nohits/")
+
 
 # Use as target in rule all to get list of target genomes
 def get_target_genomes(wildcards):
@@ -122,6 +140,20 @@ def get_primers_offtarget_tsv(wildcards):
 					primer = glob_wildcards(os.path.join(offtargetdir, "{primer}.fasta")).primer)
 	return PRIMERS_T
 
+def get_primers_bbmap_target_tsv(wildcards):
+	targetdir = checkpoints.split_bbmap_amplicons_target.get(**wildcards).output.alndir
+	PRIMERS_T = expand(OUTDIR + "bbmap_amplicons/primer_parsed/{primer}.tsv",
+					primer = glob_wildcards(os.path.join(targetdir, "{primer}.fasta")).primer)
+	return PRIMERS_T
+
+# Get target samples with no isPcr results
+def get_missing_samples(wildcards):
+	targetdir = checkpoints.missing_samples.get(**wildcards).output.outdir
+	MISSING = expand(OUTDIR + "target_nohits/{primer}.missing",
+					primer = glob_wildcards(os.path.join(targetdir, "{primer}.missing")).primer)
+	return MISSING
+
+
 
 ############################################################
 # Gather probe results from checkpoints
@@ -157,9 +189,12 @@ rule_all_input = [
 	OUTDIR + "status/prepare_primers.txt",
 	OUTDIR + "status/agg_target.txt",
 	OUTDIR + "status/collate_ispcr_target.txt",
+	OUTDIR + "status/get_missing_amplicons.txt",
+	OUTDIR + "status/collate_ispcr_bbmap.txt",
 	get_primersets_t,
 	OUTDIR + "status/collate_primers_target.txt",
 	OUTDIR + "status/summary_primers_target.txt",
+	
 ]
 
 # Handle "PROBES" condition to include probe-related files only if PROBES != "no"
@@ -205,3 +240,4 @@ include: "rules/03_prepare_primers_probes.smk"
 include: "rules/04_ispcr.smk"
 include: "rules/05_align_primers.smk"
 include: "rules/06_align_probes.smk"
+include: "rules/07_missing_amplicons.smk"

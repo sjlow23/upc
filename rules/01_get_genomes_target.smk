@@ -3,7 +3,7 @@ checkpoint download_target:
 		genomedir = directory(GENOMES_TARGET),
 	conda: "../envs/download.yaml"
 	params:
-		download_target = DOWNLOAD_TARGET,
+		download_target = DOWNLOAD_TARGET if "DOWNLOAD_TARGET" in globals() else [],
 		user_target = USER_TARGET if "USER_TARGET" in globals() else [],
 		spid = TARGET_SP_TAXID,
 		targetdir = GENOMES_TARGET,
@@ -38,6 +38,7 @@ checkpoint download_target:
 					cat {params.targetdir}/ncbi_dataset/data/genomic.fna | seqkit sample -n {params.max_target} -o {params.outdir}/genomic.fna
 					seqkit split --by-id --by-id-prefix "" -O {params.targetdir} {params.outdir}/genomic.fna
 					rm {params.outdir}/genomic.fna
+					ls {params.targetdir}/*.fna | awk -F "/" '{{ print $NF }}' > {params.outdir}/target_genomes_subsampled.txt
 				else
 					seqkit split --by-id --by-id-prefix "" -O {params.targetdir} {params.targetdir}/ncbi_dataset/data/genomic.fna
 				fi
@@ -85,7 +86,8 @@ checkpoint download_target:
 			fi		
 		else
 			echo "Target genomes provided"
-			cp -r {params.user_target} {params.targetdir}
+			mkdir -p {output.genomedir}
+			cp {params.user_target}/* {output.genomedir}/
 			for i in {params.targetdir}/*.fna; do basename $i >> {params.outdir}/target_genomes.txt; done
 		fi
 		"""

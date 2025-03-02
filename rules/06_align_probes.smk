@@ -3,7 +3,7 @@ rule probe_blast_target:
 		status = rules.collate_ispcr_target.output.status,
 		status_collate = rules.collate_primers_target.output.status,
 		probes = rules.prepare_probes.output.probes,
-		amplicons = rules.collate_ispcr_target.output.targetdedup
+		amplicons = rules.collate_ispcr_bbmap.output.targetdedup
 	output:
 		blast = OUTDIR + "ispcr_target/probes_blast.tsv",
 		status = OUTDIR + "status/probesearch_target.txt",

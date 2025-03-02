@@ -1,7 +1,7 @@
 checkpoint split_amplicons_target:
 	input:
-		infile = rules.collate_ispcr_target.output.status,
-		target = rules.collate_ispcr_target.output.targetdedup,
+		infile = rules.collate_ispcr_bbmap.output.status,
+		target = rules.collate_ispcr_bbmap.output.targetdedup,
 	output:
 		alndir = directory(OUTDIR + "ispcr_target/amplicons"),
 	conda: "../envs/seqkit.yaml"
@@ -15,6 +15,7 @@ checkpoint split_amplicons_target:
 
 		seqkit split --by-id --by-id-prefix "" -j {threads} --two-pass --update-faidx \
 			--id-regexp '^\S+\s+(\w+)' --out-dir {output.alndir} {input.target}
+		
 		"""
 
 checkpoint split_amplicons_offtarget:
@@ -52,6 +53,7 @@ rule align_split_target:
 		ginsi --thread {threads} {input.fasta} > {output.aln}
 		"""
 
+
 rule align_split_offtarget:
 	input:
 		fasta = OUTDIR + "ispcr_offtarget/amplicons/{primer}.fasta",
@@ -63,7 +65,6 @@ rule align_split_offtarget:
 		"""
 		ginsi --thread {threads} {input.fasta} > {output.aln}
 		"""
-
 
 rule lookup_aln_target:
 	input:

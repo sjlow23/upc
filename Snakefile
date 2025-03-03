@@ -240,4 +240,4 @@ include: "rules/03_prepare_primers_probes.smk"
 include: "rules/04_ispcr.smk"
 include: "rules/05_align_primers.smk"
 include: "rules/06_align_probes.smk"
-include: "rules/07_missing_amplicons.smk"
+

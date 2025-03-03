@@ -41,6 +41,7 @@ checkpoint split_amplicons_offtarget:
 		fi
 		"""
 
+
 rule align_split_target:
 	input:
 		fasta = OUTDIR + "ispcr_target/amplicons/{primer}.fasta",
@@ -50,7 +51,9 @@ rule align_split_target:
 	conda: "../envs/align.yaml"
 	shell:
 		"""
-		ginsi --thread {threads} {input.fasta} > {output.aln}
+		ginsi --thread {threads} {input.fasta} > {output.aln}.tmp
+		trimal -in {output.aln}.tmp -out {output.aln} -gt 0.5
+		rm {output.aln}.tmp
 		"""
 
 
@@ -63,7 +66,9 @@ rule align_split_offtarget:
 	conda: "../envs/align.yaml"
 	shell:
 		"""
-		ginsi --thread {threads} {input.fasta} > {output.aln}
+		ginsi --thread {threads} {input.fasta} > {output.aln}.tmp
+		trimal -in {output.aln}.tmp -out {output.aln} -gt 0.5
+		rm {output.aln}.tmp
 		"""
 
 rule lookup_aln_target:
@@ -231,16 +236,36 @@ rule summary_primers_target:
 		perprimer = OUTDIR + "stats_primers/target/stats_perprimer.tsv",
 		mismatchcount = OUTDIR + "stats_primers/target/stats_mismatches.tsv",
 		grouped = OUTDIR + "stats_primers/target/stats_mismatches_grouped.tsv",
+		missing = OUTDIR + "stats_primers/target/stats_genomes_missing.tsv",
 		status = OUTDIR + "status/summary_primers_target.txt"
 	threads: 4
 	conda: "../envs/primer_mismatch.yaml"
 	params:
+		outdir = OUTDIR,
 		targetdb = GENOMES_TARGET,
+		subsample = SUBSAMPLE_TARGET,
 	shell:
 		"""
 		targetcount=$(ls {params.targetdb}/*.fna | wc -l)
 		
-		Rscript scripts/get_primer_summary.R {input.target} {output.pergenome} {output.percombo} {output.perprimer} {output.mismatchcount} {output.grouped} $targetcount
+		if [[ {params.subsample} == "" ]]
+		then
+			genomelist="target_genomes.txt"
+		else
+			genomelist="target_genomes_subsampled.txt"
+		fi
+	
+		Rscript scripts/get_primer_summary.R {input.target} \
+		{output.pergenome} \
+		{output.percombo} \
+		{output.perprimer} \
+		{output.mismatchcount} \
+		{output.grouped} \
+		{output.missing} \
+		{params.outdir}/$genomelist \
+		$targetcount \
+		"target"
+
 		touch {output.status}
 		"""
 
@@ -255,19 +280,31 @@ rule summary_primers_offtarget:
 		perprimer = OUTDIR + "stats_primers/offtarget/stats_perprimer.tsv",
 		mismatchcount = OUTDIR + "stats_primers/offtarget/stats_mismatches.tsv",
 		grouped = OUTDIR + "stats_primers/offtarget/stats_mismatches_grouped.tsv",
+		missing = OUTDIR + "stats_primers/offtarget/stats_genomes_missing.tsv",
 		status = OUTDIR + "status/summary_primers_offtarget.txt"
 	threads: 4
 	conda: "../envs/primer_mismatch.yaml"
 	params:
 		offtargetdb = GENOMES_OFFTARGET,
+		genomelist = OUTDIR + "offtarget_genomes.txt"
 	shell:
 		"""
+		offtargetcount=$(wc -l {params.genomelist} | awk '{{ print $1 }}')
+		
 		if [[ -s {input.status} ]]
 		then
-			offtargetcount=$(ls {params.offtargetdb}/*.fna | wc -l)
-			Rscript scripts/get_primer_summary.R {input.offtarget} {output.pergenome} {output.percombo} {output.perprimer} {output.mismatchcount} {output.grouped} $offtargetcount
+			Rscript scripts/get_primer_summary.R {input.offtarget} \
+			{output.pergenome} \
+			{output.percombo} \
+			{output.perprimer} \
+			{output.mismatchcount} \
+			{output.grouped} \
+			{output.missing} \
+			{params.genomelist} \
+			$offtargetcount \
+			"offtarget"
 		else
-			touch {output.pergenome} {output.percombo} {output.perprimer} {output.mismatchcount} {output.grouped}
+			touch {output.pergenome} {output.percombo} {output.perprimer} {output.mismatchcount} {output.grouped} {output.missing}
 		fi
 
 		touch {output.status}

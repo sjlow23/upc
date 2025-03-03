@@ -17,8 +17,12 @@ output_permutation_combo <- args[3]
 output_perprobe <- args[4]
 output_pergenome_mismatches <- args[5]
 output_grouped <- args[6]
+output_missing <- args[7]
+genomelist <- gsub(".fna", "", readLines(args[8]))
 
-origenomecount <- as.numeric(args[7])
+origenomecount <- as.numeric(args[9])
+category <- args[10]
+
 
 # Get combinations of probes, genomes, and type
 combinations <- expand.grid(
@@ -40,12 +44,12 @@ keep <- probe_result %>%
 	distinct(ori_probe, position) 
 
 # Limit probes df to only those probes and positions with at least one mismatch
-probe_result <- probe_result %>%
+probe_result.subset <- probe_result %>%
 	inner_join(keep)
 
 # Per probeset ori and genome combo, number of mismatches, positions of mismatches, 
 # and actual mismatches
-summary_pergenome <- probe_result %>% 
+summary_pergenome <- probe_result.subset %>% 
 	mutate(mismatch=case_when(mutation == "" ~ 0, TRUE ~ 1)) %>%
 	group_by(genome, ori_probe, position, type) %>% 
 	filter(mismatch == min(mismatch)) %>%
@@ -61,6 +65,30 @@ if (nrow(summary_pergenome) > 0) {
 } else {
 	file.create(output_pergenome)
 }
+
+
+
+# Get missing genomes
+if (category == "target") {
+	summary_missing <- probe_result %>%
+	group_by(ori_probe) %>%
+	summarize(count_genomes_present = n_distinct(genome),
+			  count_genomes_missing = origenomecount - count_genomes_present,
+			  genomes_missing = toString(setdiff(genomelist, genome)))
+} else {
+	summary_missing <- probe_result %>%
+	group_by(ori_probe) %>%
+	summarize(count_genomes_present = n_distinct(genome),
+			  count_genomes_missing = origenomecount - count_genomes_present,
+			  genomes_present = toString(unique(genome)))
+}
+
+if (nrow(summary_missing) > 0) {
+	fwrite(summary_missing, file=output_missing, col.names=T, row.names=F, sep="\t", quote=F)
+} else {
+	file.create(output_missing)
+}
+
 
 
 # Collapse pergenome output into mutation combinations frequency per probeset
@@ -94,7 +122,7 @@ if (nrow(summary_permutation_combo) > 0) {
 
 
 # Per probeset ori and position combo, mutations
-summary_perprobe <- probe_result %>% 
+summary_perprobe <- probe_result.subset %>% 
 	mutate(mismatch = case_when(mutation=="" ~ 0, TRUE ~ 1)) %>%
 	group_by(ori_probe, genome, position, type) %>% 
 	filter(mismatch == min(mismatch)) %>%
@@ -113,7 +141,7 @@ if (nrow(summary_perprobe) > 0) {
 # Per genome, number of fwd and rev mismatches
 # Can't add all possible combinations, as those that fail to amplify are not included in ori primers tsv
 # Stats is only for genomes that had amplification
-summary_pergenome_mismatches <- probe_result %>% 
+summary_pergenome_mismatches <- probe_result.subset %>% 
 	mutate(mismatch=case_when(mutation == "" ~ 0, TRUE ~ 1)) %>%
 	group_by(genome, ori_probe, position, type) %>% 
 	filter(mismatch == min(mismatch)) %>%

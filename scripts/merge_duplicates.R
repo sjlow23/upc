@@ -16,13 +16,17 @@ if (file.exists(args[1])) {
 	# if duplicates present
 	lookup <- fread(args[1], header=F, sep="\t")
 	names(lookup) <- c("genome", "representative")
+	
 	lookup <- lookup %>%
 	separate_rows(genome, sep=", ") %>%
-	left_join(aln, by="representative")
+	full_join(aln, by = "representative") %>%
+	mutate(genome = case_when(is.na(genome) ~ representative,
+								TRUE ~ genome))
+	
 	} else {
 	cat("No duplicates found\n")
 	lookup <- aln %>% 
-		mutate(genome=representative) %>%
+		mutate(genome = representative) %>%
 		relocate(genome, .after=representative)	
 	}
 

@@ -28,13 +28,15 @@ checkpoint remove_overlaps:
 	threads: 1
 	params:
 		outdir = OUTDIR,
-		newdir = OUTDIR + "genomes_offtarget/",
+		newdir = GENOMES_OFFTARGET,
 		offtargetdir = GENOMES_OFFTARGET_TMP,
+		target = OUTDIR + "target_genomes.txt",
+		offtarget = OUTDIR + "offtarget_genomes.txt"
 	shell:
 		"""
 		mkdir -p {params.newdir}
 
-		grep -wF -f {params.outdir}/offtarget_genomes.txt {params.outdir}/target_genomes.txt > {params.outdir}/remove
+		grep -wF -f {params.offtarget} {params.target} > {params.outdir}/remove
 
 		if [[ -s {params.outdir}/remove ]]
 		then
@@ -42,7 +44,7 @@ checkpoint remove_overlaps:
 		fi
 				
 		mv {params.offtargetdir}/* {output.offtargetdir}/
-		rm {params.outdir}/offtarget_genomes.txt {params.outdir}/remove
+		rm {params.outdir}/remove
 		rm -rf {params.offtargetdir}
 
 		touch {output.status}
@@ -66,7 +68,7 @@ checkpoint ispcr_target:
 		#bed = OUTDIR + "ispcr_target/bed/{genome}.bed",
 		amp = OUTDIR + "ispcr_target/amplicon/{genome}.fasta",
 	conda: "../envs/ispcr.yaml"
-	threads: 1
+	threads: 2
 	params:
 		outdir = OUTDIR,
 		min_perfect = MIN_PERFECT,
@@ -95,7 +97,7 @@ checkpoint ispcr_offtarget:
 		#bed = OUTDIR + "ispcr_offtarget/bed/{genome}.bed",
 		amp = OUTDIR + "ispcr_offtarget/amplicon/{genome}.fasta",
 	conda: "../envs/ispcr.yaml"
-	threads: 1
+	threads: 2
 	params:
 		outdir = OUTDIR,
 		min_perfect = MIN_PERFECT,
@@ -122,15 +124,19 @@ rule collate_ispcr_target:
 		get_target_ispcr,
 	output:
 		targetamp = OUTDIR + "ispcr_target/target_amplicons.fasta",
-		#targetdedup = OUTDIR + "ispcr_target/target_amplicons_dedup.fasta",
 		status = OUTDIR + "status/collate_ispcr_target.txt",
 	params:
 		targetdir = OUTDIR + "ispcr_target",
+		max_size = MAX_AMPLICON_SIZE
+	conda: "../envs/seqkit.yaml"
 	shell:
 		"""
-		cat {params.targetdir}/amplicon/*.fasta > {output.targetamp}
+		cat {params.targetdir}/amplicon/*.fasta > {params.targetdir}/merged.fasta
+		seqkit seq --max-len {params.max_size} {params.targetdir}/merged.fasta > {output.targetamp}
+		rm {params.targetdir}/merged.fasta
 		touch {output.status}
 		"""
+
 
 checkpoint missing_samples:
 	input:
@@ -147,18 +153,19 @@ checkpoint missing_samples:
 	shell:
 		"""
 		mkdir -p {output.outdir}
-		grep ">" {params.ispcrdir}/target_amplicons.fasta | sed 's/:/\\t/1' | sed 's/>//g' | awk '{{ print $1, $3 }}' OFS="\\t" > {params.resultdir}/hits.txt
+		grep ">" {params.ispcrdir}/target_amplicons.fasta | sed 's/:/\\t/1' | sed 's/>//g' | awk '{{ print $1, $3 }}' OFS="\\t" | sort | uniq > {params.resultdir}/hits.txt
 
-		if [[ {params.subsample}  != "no" ]]
+		if [[ {params.subsample} == "" || {params.subsample} == "no" ]]
 		then
-			genomelist="{params.outdir}/target_genomes_subsampled.txt"
-		else
 			genomelist="{params.outdir}/target_genomes.txt"
+		else
+			genomelist="{params.outdir}/target_genomes_subsampled.txt"
 		fi
 
 		for primer in `cut -f1 {params.outdir}/primers.txt | sort | uniq`; do \
-			grep -w "$primer" {params.resultdir}/hits.txt | cut -f1 | sort | uniq | awk '{ print $0".fna" }'> {params.resultdir}/"$primer".txt
+			grep -w "$primer" {params.resultdir}/hits.txt | cut -f1 | sort | uniq | awk '{{ print $0".fna" }}' > {params.resultdir}/"$primer".txt
 			comm -23 $genomelist {params.resultdir}/"$primer".txt > {params.resultdir}/"$primer".missing; done
+	
 		"""
 
 
@@ -186,14 +193,14 @@ rule get_missing_amplicons:
 		resultdir = OUTDIR + "bbmap_amplicons/",
 		max_mismatch = MAX_MISMATCH,
 		targetdir = GENOMES_TARGET,
-		max_size = MAX_AMPLICON_SIZE,
+		max_size = 200,
 	conda: "../envs/align.yaml"
 	threads: 4
 	shell:
 		"""
 		mkdir -p {params.primerdir} {params.resultdir}
-
-		ls {params.primerdir}/*.txt | grep -v hits | awk -F "/" '{{ print $NF }}' | sed 's/.txt//g' > {params.outdir}/primerlist.txt
+		
+		ls {params.primerdir}/*.txt | awk -F "/" '{{ print $NF }}' | grep -v hits | sed 's/.txt//g' > {params.outdir}/primerlist.txt
 
 		while read primer
 		do
@@ -211,8 +218,8 @@ rule get_missing_amplicons:
 				msa.sh in={params.targetdir}/"$genome".fna \
 				noheader=t \
 				trimreaddescriptions=t \
+				addr=t \
 				out={params.resultdir}/"$genome".rev.sam \
-				rcomp=t \
 				ref={params.primerdir}/"$primer".rev cutoff=0.7
 
 				cutprimers.sh \
@@ -223,29 +230,46 @@ rule get_missing_amplicons:
 				out={params.resultdir}/"$genome".fasta \
 				include=t
 
+				for i in {params.resultdir}/*.sam; do \
+				awk 'BEGIN {{
+					comp["A"] = "T"; comp["T"] = "A"; comp["C"] = "G"; comp["G"] = "C"
+				}}
+				$1 ~ /^@/ {{ print; next }}
+				{{
+					if ($1 ~ /^r_/) {{
+						seq = $10
+						rev_comp = ""
+						for (i = length(seq); i > 0; i--) {{
+							rev_comp = rev_comp comp[substr(seq, i, 1)]
+						}}
+						$10 = rev_comp
+					}}
+					print
+				}}' OFS="\t" "$i" | sed 's/^r_//g' > "$i".rc; done
+
 				cat {params.resultdir}/"$genome".fasta >> {params.resultdir}/"$primer"_merged.fasta
 
 				# Add alignment info to lookup file for renaming header
-				awk -F "\\t" '{{ print $3, $1, $10 }}' OFS="\\t" {params.resultdir}/"$genome".fwd.sam | sed 's/\\t/--/1' >> {params.resultdir}/fwd
-				awk -F "\\t" '{{ print $3, $1, $10 }}' OFS="\\t" {params.resultdir}/"$genome".rev.sam | sed 's/\\t/--/1' >> {params.resultdir}/rev
+				awk -F "\\t" '{{ print $3, $1, $4, $10 }}' OFS="\\t" {params.resultdir}/"$genome".fwd.sam.rc | sed 's/\\t/--/1' >> {params.resultdir}/fwd
+				awk -F "\\t" '{{ print $3, $1, $4+length($10)-1, $10 }}' OFS="\\t" {params.resultdir}/"$genome".rev.sam.rc | sed 's/\\t/--/1' >> {params.resultdir}/rev
 				
-				rm {params.resultdir}/"$genome".fwd.sam {params.resultdir}/"$genome".rev.sam {params.resultdir}/"$genome".fasta
+				rm {params.resultdir}/"$genome".fwd.sam* {params.resultdir}/"$genome".rev.sam* {params.resultdir}/"$genome".fasta
 			done
 
 				# Rename headers in fasta
 				sort -k1,1 {params.resultdir}/fwd > {params.resultdir}/fwd.sorted
 				sort -k1,1 {params.resultdir}/rev > {params.resultdir}/rev.sorted
 
-				join -1 1 -2 1 -a 1 -a 2 -e NA -o 1.1,1.2,2.2 {params.resultdir}/fwd.sorted {params.resultdir}/rev.sorted | \
+				join -1 1 -2 1 -a 1 -a 2 -e NA -o 1.1,1.2,2.2,1.3,2.3 {params.resultdir}/fwd.sorted {params.resultdir}/rev.sorted | \
 				sed 's/--/\\t/1' | \
-				awk '{{ print $1, $1":0+0", $2, "X", $3, $4 }}' OFS="\\t" | \
+				awk '{{ print $1, $1":"$3"+"$4, $2, "X", $5, $6 }}' OFS="\\t" | \
 				sed 's/\\t/ /g' | \
 				sed 's/ /\\t/1' > {params.resultdir}/headers.txt
 				rm {params.resultdir}/fwd {params.resultdir}/rev {params.resultdir}/fwd.sorted {params.resultdir}/rev.sorted
 
 			seqkit replace --kv-file {params.resultdir}/headers.txt --pattern "^(\\S+)" --replacement "{{kv}}" --out-file {params.resultdir}/"$primer"_amp.fasta {params.resultdir}/"$primer"_merged.fasta
 
-			rm {params.primerdir}/"$primer".fwd {params.primerdir}/"$primer".rev
+			rm {params.primerdir}/"$primer".fwd {params.primerdir}/"$primer".rev {params.resultdir}/headers.txt {params.outdir}/primerlist.txt 
 		done < {params.outdir}/primerlist.txt
 
 		# Merge fasta from all primers

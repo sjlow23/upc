@@ -1,6 +1,5 @@
 rule probe_blast_target:
 	input:
-		status = rules.collate_ispcr_target.output.status,
 		status_collate = rules.collate_primers_target.output.status,
 		probes = rules.prepare_probes.output.probes,
 		amplicons = rules.collate_ispcr_bbmap.output.targetdedup
@@ -221,16 +220,36 @@ rule summary_probes_target:
 		perprobe = OUTDIR + "stats_probes/target/stats_perprobe.tsv",
 		mismatchcount = OUTDIR + "stats_probes/target/stats_mismatches.tsv",
 		grouped = OUTDIR + "stats_probes/target/stats_mismatches_grouped.tsv",
+		missing = OUTDIR + "stats_probes/target/stats_genomes_missing.tsv",
 		status = OUTDIR + "status/summary_probes_target.txt"
 	threads: 4
 	conda: "../envs/primer_mismatch.yaml"
 	params:
+		outdir = OUTDIR,
 		targetdb = GENOMES_TARGET,
+		subsample = SUBSAMPLE_TARGET,
 	shell:
 		"""
 		targetcount=$(ls {params.targetdb}/*.fna | wc -l)
 		
-		Rscript scripts/get_probe_summary.R {input.target} {output.pergenome} {output.percombo} {output.perprobe} {output.mismatchcount} {output.grouped} $targetcount
+		if [[ {params.subsample} == "" ]]
+		then
+			genomelist="target_genomes.txt"
+		else
+			genomelist="target_genomes_subsampled.txt"
+		fi
+
+		Rscript scripts/get_probe_summary.R {input.target} \
+		{output.pergenome} \
+		{output.percombo} \
+		{output.perprobe} \
+		{output.mismatchcount} \
+		{output.grouped} \
+		{output.missing} \
+		{params.outdir}/$genomelist \
+		$targetcount \
+		"target"
+
 		touch {output.status}
 		"""
 
@@ -245,18 +264,29 @@ rule summary_probes_offtarget:
 		perprobe = OUTDIR + "stats_probes/offtarget/stats_perprobe.tsv",
 		mismatchcount = OUTDIR + "stats_probes/offtarget/stats_mismatches.tsv",
 		grouped = OUTDIR + "stats_probes/offtarget/stats_mismatches_grouped.tsv",
+		missing = OUTDIR + "stats_probes/offtarget/stats_genomes_missing.tsv",
 		status = OUTDIR + "status/summary_probes_offtarget.txt"
 	threads: 4
 	conda: "../envs/primer_mismatch.yaml"
 	params:
 		offtargetdb = GENOMES_OFFTARGET,
+		genomelist = OUTDIR + "offtarget_genomes.txt"
 	shell:
 		"""
-		offtargetcount=$(ls {params.offtargetdb}/*.fna | wc -l)
+		offtargetcount=$(wc -l {params.genomelist} | awk '{{ print $1 }}')
 		
 		if [[ -s {input.offtarget_blast} ]]
 		then
-			Rscript scripts/get_probe_summary.R {input.offtarget} {output.pergenome} {output.percombo} {output.perprobe} {output.mismatchcount} {output.grouped} $offtargetcount
+			Rscript scripts/get_probe_summary.R {input.offtarget} \
+			{output.pergenome} \
+			{output.percombo} \
+			{output.perprobe} \
+			{output.mismatchcount} \
+			{output.grouped} \
+			{output.missing} \
+			{params.genomelist} \
+			$offtargetcount \
+			"offtarget"
 		else
 			touch {output.pergenome} {output.percombo} {output.perprobe} {output.mismatchcount} {output.grouped}
 		fi

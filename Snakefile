@@ -4,8 +4,7 @@ configfile: "config/config_denv.yaml"
 
 OUTDIR = directory(config["params"]["OUTDIR"])
 CPU = config["params"]["CPU"]
-SUBSAMPLE_TARGET = config["params"]["SUBSAMPLE_TARGET"]
-SUBSAMPLE_OFFTARGET = config["params"]["SUBSAMPLE_OFFTARGET"]
+
 PRIMERS = config["params"]["PRIMERS"]
 
 MAX_AMPLICON_SIZE = config["ispcr"]["MAX_AMPLICON_SIZE"]
@@ -18,6 +17,15 @@ if config["amplicon"]["MAX_MISMATCHES"]:
 	MAX_MISMATCH = config["amplicon"]["MAX_MISMATCHES"]
 else:
 	MAX_MISMATCH = 6
+
+if config["params"]["SUBSAMPLE_TARGET"]:
+	SUBSAMPLE_TARGET = config["params"]["SUBSAMPLE_TARGET"]
+else:
+	SUBSAMPLE_TARGET = "no"
+if config["params"]["SUBSAMPLE_OFFTARGET"]:
+	SUBSAMPLE_OFFTARGET = config["params"]["SUBSAMPLE_OFFTARGET"]
+else:
+	SUBSAMPLE_OFFTARGET = "no"
 
 DOMAIN = config["datasets"]["DOMAIN"]
 ASSEMBLY_LEVEL = config["datasets"]["ASSEMBLY_LEVEL"]
@@ -194,6 +202,7 @@ rule_all_input = [
 	get_primersets_t,
 	OUTDIR + "status/collate_primers_target.txt",
 	OUTDIR + "status/summary_primers_target.txt",
+	OUTDIR + "status/plot_stats.txt"
 	
 ]
 
@@ -240,4 +249,5 @@ include: "rules/03_prepare_primers_probes.smk"
 include: "rules/04_ispcr.smk"
 include: "rules/05_align_primers.smk"
 include: "rules/06_align_probes.smk"
+include: "rules/07_plot_stats.smk"
 

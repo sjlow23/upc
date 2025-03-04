@@ -17,6 +17,9 @@ rule probe_blast_target:
 			-subject {input.amplicons} \
 			-task blastn-short \
 			-qcov_hsp_perc 50 \
+			-word_size 5 \
+			-max_target_seqs 1000000 \
+			-max_hsps 1 \
 			-outfmt "6 qseqid sseqid slen length pident nident mismatch sseq" > {output.blast}
 
 		sed -i "s/--/\t/g" {output.blast}
@@ -49,6 +52,9 @@ rule probe_blast_offtarget:
 			-subject {input.amplicons} \
 			-task blastn-short \
 			-qcov_hsp_perc 50 \
+			-word_size 5 \
+			-max_target_seqs 1000000 \
+			-max_hsps 1 \
 			-outfmt "6 qseqid sseqid slen length pident nident mismatch sseq" > {output.blast}
 
 			sed -i "s/--/\t/g" {output.blast}

@@ -2,7 +2,7 @@ rule probe_blast_target:
 	input:
 		status_collate = rules.collate_primers_target.output.status,
 		probes = rules.prepare_probes.output.probes,
-		amplicons = rules.collate_ispcr_bbmap.output.targetdedup
+		amplicons = rules.collate_ispcr_bbmap.output.merged
 	output:
 		blast = OUTDIR + "ispcr_target/probes_blast.tsv",
 		status = OUTDIR + "status/probesearch_target.txt",
@@ -16,7 +16,7 @@ rule probe_blast_target:
 		blastn -query {input.probes} \
 			-subject {input.amplicons} \
 			-task blastn-short \
-			-qcov_hsp_perc 70 \
+			-qcov_hsp_perc 50 \
 			-outfmt "6 qseqid sseqid slen length pident nident mismatch sseq" > {output.blast}
 
 		sed -i "s/--/\t/g" {output.blast}
@@ -33,7 +33,7 @@ rule probe_blast_offtarget:
 		status = rules.collate_ispcr_offtarget.output.status,
 		status_collate = rules.collate_primers_offtarget.output.status,
 		probes = rules.prepare_probes.output.probes,
-		amplicons = rules.collate_ispcr_offtarget.output.offtargetdedup
+		amplicons = rules.collate_ispcr_offtarget.output.offtargetamp
 	output:
 		blast = OUTDIR + "ispcr_offtarget/probes_blast.tsv",
 		status = OUTDIR + "status/probesearch_offtarget.txt",
@@ -48,7 +48,7 @@ rule probe_blast_offtarget:
 			blastn -query {input.probes} \
 			-subject {input.amplicons} \
 			-task blastn-short \
-			-qcov_hsp_perc 70 \
+			-qcov_hsp_perc 50 \
 			-outfmt "6 qseqid sseqid slen length pident nident mismatch sseq" > {output.blast}
 
 			sed -i "s/--/\t/g" {output.blast}
@@ -232,7 +232,7 @@ rule summary_probes_target:
 		"""
 		targetcount=$(ls {params.targetdb}/*.fna | wc -l)
 		
-		if [[ {params.subsample} == "" ]]
+		if [[ {params.subsample} == "no" ]]
 		then
 			genomelist="target_genomes.txt"
 		else

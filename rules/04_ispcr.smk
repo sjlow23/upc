@@ -205,22 +205,22 @@ rule get_missing_amplicons:
 		while read primer
 		do
 			grep -w "$primer" {input.primers} > input.txt
-			awk '{{ print ">"$1"\\n"$2 }}' input.txt > {params.primerdir}/"$primer".fwd
-			awk '{{ print ">"$1"\\n"$3 }}' input.txt > {params.primerdir}/"$primer".rev
+			awk '{{ print ">"$1"\\n"$2 }}' input.txt > {params.primerdir}/"$primer".fwd.fasta
+			awk '{{ print ">"$1"\\n"$3 }}' input.txt > {params.primerdir}/"$primer".rev.fasta
 
 			for genome in `cat {params.primerdir}/"$primer".missing | sed 's/.fna//g'`; do \
 				msa.sh in={params.targetdir}/"$genome".fna \
 				noheader=t \
 				trimreaddescriptions=t \
 				out={params.resultdir}/"$genome".fwd.sam \
-				ref={params.primerdir}/"$primer".fwd cutoff=0.7;
+				ref={params.primerdir}/"$primer".fwd.fasta cutoff=0.75;
 
 				msa.sh in={params.targetdir}/"$genome".fna \
 				noheader=t \
 				trimreaddescriptions=t \
 				addr=t \
 				out={params.resultdir}/"$genome".rev.sam \
-				ref={params.primerdir}/"$primer".rev cutoff=0.7
+				ref={params.primerdir}/"$primer".rev.fasta cutoff=0.75
 
 				cutprimers.sh \
 				trimreaddescriptions=t \
@@ -228,13 +228,14 @@ rule get_missing_amplicons:
 				sam2={params.resultdir}/"$genome".rev.sam \
 				in={params.targetdir}/"$genome".fna \
 				out={params.resultdir}/"$genome".fasta \
-				include=t
+				include=t \
+				fake=f
 
 				for i in {params.resultdir}/*.sam; do \
-				awk 'BEGIN {{
+				awk -F "\t" 'BEGIN {{
 					comp["A"] = "T"; comp["T"] = "A"; comp["C"] = "G"; comp["G"] = "C"
 				}}
-				$1 ~ /^@/ {{ print; next }}
+				$2 != 4 && $2 != 20
 				{{
 					if ($1 ~ /^r_/) {{
 						seq = $10
@@ -269,7 +270,7 @@ rule get_missing_amplicons:
 
 			seqkit replace --kv-file {params.resultdir}/headers.txt --pattern "^(\\S+)" --replacement "{{kv}}" --out-file {params.resultdir}/"$primer"_amp.fasta {params.resultdir}/"$primer"_merged.fasta
 
-			rm {params.primerdir}/"$primer".fwd {params.primerdir}/"$primer".rev {params.resultdir}/headers.txt {params.outdir}/primerlist.txt 
+			rm {params.primerdir}/"$primer".fwd.fasta {params.primerdir}/"$primer".rev.fasta {params.resultdir}/headers.txt {params.outdir}/primerlist.txt 
 		done < {params.outdir}/primerlist.txt
 
 		# Merge fasta from all primers

@@ -52,7 +52,7 @@ rule align_split_target:
 	shell:
 		"""
 		ginsi --thread {threads} {input.fasta} > {output.aln}.tmp
-		trimal -in {output.aln}.tmp -out {output.aln} -gt 0.5
+		trimal -keepheader -in {output.aln}.tmp -out {output.aln} -gt 0.5
 		rm {output.aln}.tmp
 		"""
 
@@ -67,7 +67,7 @@ rule align_split_offtarget:
 	shell:
 		"""
 		ginsi --thread {threads} {input.fasta} > {output.aln}.tmp
-		trimal -in {output.aln}.tmp -out {output.aln} -gt 0.5
+		trimal -keepheader -in {output.aln}.tmp -out {output.aln} -gt 0.5
 		rm {output.aln}.tmp
 		"""
 
@@ -248,7 +248,7 @@ rule summary_primers_target:
 		"""
 		targetcount=$(ls {params.targetdb}/*.fna | wc -l)
 		
-		if [[ {params.subsample} == "" ]]
+		if [[ {params.subsample} == "no" ]]
 		then
 			genomelist="target_genomes.txt"
 		else

@@ -213,7 +213,7 @@ rule get_missing_amplicons:
 				noheader=t \
 				trimreaddescriptions=t \
 				out={params.resultdir}/"$genome".fwd.sam \
-				ref={params.primerdir}/"$primer".fwd.fasta cutoff=0.75;
+				ref={params.primerdir}/"$primer".fwd.fasta cutoff=0.75
 
 				msa.sh in={params.targetdir}/"$genome".fna \
 				noheader=t \
@@ -254,7 +254,7 @@ rule get_missing_amplicons:
 				awk -F "\\t" '{{ print $3, $1, $4, $10 }}' OFS="\\t" {params.resultdir}/"$genome".fwd.sam.rc | sed 's/\\t/--/1' >> {params.resultdir}/fwd
 				awk -F "\\t" '{{ print $3, $1, $4+length($10)-1, $10 }}' OFS="\\t" {params.resultdir}/"$genome".rev.sam.rc | sed 's/\\t/--/1' >> {params.resultdir}/rev
 				
-				rm {params.resultdir}/"$genome".fwd.sam* {params.resultdir}/"$genome".rev.sam* {params.resultdir}/"$genome".fasta
+				#rm {params.resultdir}/"$genome".fwd.sam* {params.resultdir}/"$genome".rev.sam* {params.resultdir}/"$genome".fasta
 			done
 
 				# Rename headers in fasta
@@ -266,11 +266,11 @@ rule get_missing_amplicons:
 				awk '{{ print $1, $1":"$3"+"$4, $2, "X", $5, $6 }}' OFS="\\t" | \
 				sed 's/\\t/ /g' | \
 				sed 's/ /\\t/1' > {params.resultdir}/headers.txt
-				rm {params.resultdir}/fwd {params.resultdir}/rev {params.resultdir}/fwd.sorted {params.resultdir}/rev.sorted
+				#rm {params.resultdir}/fwd {params.resultdir}/rev {params.resultdir}/fwd.sorted {params.resultdir}/rev.sorted
 
 			seqkit replace --kv-file {params.resultdir}/headers.txt --pattern "^(\\S+)" --replacement "{{kv}}" --out-file {params.resultdir}/"$primer"_amp.fasta {params.resultdir}/"$primer"_merged.fasta
 
-			rm {params.primerdir}/"$primer".fwd.fasta {params.primerdir}/"$primer".rev.fasta {params.resultdir}/headers.txt {params.outdir}/primerlist.txt 
+			#rm {params.primerdir}/"$primer".fwd.fasta {params.primerdir}/"$primer".rev.fasta {params.resultdir}/headers.txt
 		done < {params.outdir}/primerlist.txt
 
 		# Merge fasta from all primers
@@ -279,7 +279,7 @@ rule get_missing_amplicons:
 		# Keep only amplicons of expected size
 		seqkit seq --max-len {params.max_size} {params.resultdir}/merged.fasta > {output.amplicons}
 
-		rm {params.resultdir}/*_amp.fasta {params.resultdir}/merged.fasta
+		#rm {params.resultdir}/*_amp.fasta {params.resultdir}/merged.fasta {params.outdir}/primerlist.txt 
 		touch {output.status}
 		"""
 

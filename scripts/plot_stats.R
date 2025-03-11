@@ -25,7 +25,7 @@ mycolors <- c("#FFD700", "#FF0000","#2BE4E9", "#F19CBB", "#ADFF2F", "#2F4F4F", "
 			  "#D8BFD8", "#C0C0C0", "#FF7540", "#107090",  "#D5006A",
 			  "#B1A2CA","#EFBE7D","#61F4DE","#FFCACA", "#676767","#FCF5C7","#6B8E23","#87CEFA", 
 			  "#E9EC6B",  "#FF4500","#FF1493", "#4D4DFF", "#FF00FF", 
-			  "#008000","#008080","#00FF00","#00FF7F", "#acff80")
+			  "#008000","#008080","#00FF00","#00FF7F", "#acff80", "#d3d3d3", "#000000")
 
 mutation_colors <- c("#8effc1" = "Low",
 					 "orange" = "Medium", 

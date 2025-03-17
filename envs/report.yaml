@@ -1,0 +1,11 @@
+channels:
+ - conda-forge
+ - bioconda
+ - r
+
+dependencies:
+ - r-dplyr
+ - r-tidyr
+ - r-data.table
+ - r-knitr
+ - r-kableExtra

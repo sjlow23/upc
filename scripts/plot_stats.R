@@ -7,6 +7,7 @@ library(data.table)
 library(ggplot2)
 library(ggrepel)
 library(cowplot)
+library(wesanderson)
 
 
 args <- commandArgs(trailingOnly=TRUE)
@@ -25,7 +26,12 @@ mycolors <- c("#FFD700", "#FF0000","#2BE4E9", "#F19CBB", "#ADFF2F", "#2F4F4F", "
 			  "#D8BFD8", "#C0C0C0", "#FF7540", "#107090",  "#D5006A",
 			  "#B1A2CA","#EFBE7D","#61F4DE","#FFCACA", "#676767","#FCF5C7","#6B8E23","#87CEFA", 
 			  "#E9EC6B",  "#FF4500","#FF1493", "#4D4DFF", "#FF00FF", 
-			  "#008000","#008080","#00FF00","#00FF7F", "#acff80", "#d3d3d3", "#000000")
+			  "#008000","#008080","#00FF00","#00FF7F", "#acff80", "#d3d3d3", "#02ccfe", "#000000")
+
+mycolors <- c(mycolors, 
+			unclass(wes_palette(15, name="Zissou1", type="continuous")),
+			unclass(wes_palette(15, name="Rushmore1", type="continuous")),
+			unclass(wes_palette(15, name="FantasticFox1", type="continuous")))
 
 mutation_colors <- c("#8effc1" = "Low",
 					 "orange" = "Medium", 
@@ -88,20 +94,24 @@ plot_individual_primer_mutations <- function(mydf) {
 	select(-ori_primer, -type, -count_genomes_amplified) %>% 
 	pivot_longer(c(count_genomes_with_mutation, count_wildtype), names_to="category", values_to="count") %>% 
 	mutate(mutation=case_when(category=="count_wildtype" ~ "WT", TRUE ~ mutation)) %>%
-	distinct() 
-	
+	distinct() %>%
+	ungroup() %>%
+	group_by(primer, position) %>%
+	mutate(percentage = count/sum(count)*100)
   plotdf$position <- factor(plotdf$position, levels=unique(plotdf$position))
+
   myplot <- plotdf %>%
-	ggplot(aes(x=position, y=count, group=mutation)) +
+	ggplot(aes(x=position, y=count)) +
 	geom_bar(aes(fill=mutation), position="stack", stat="identity") +
-	geom_text_repel(aes(label=mutation), position = position_stack(vjust=0.5), size=2.5, point.size=NA) +
+	geom_text(aes(label=ifelse(percentage >=3, mutation, NA_character_), group=mutation),
+					position = position_stack(vjust=0.5), max.overlaps=5, size=2.5, point.size=NA) +
 	facet_wrap(.~primer, scales="free_x") + 
 	scale_y_continuous(expand=c(0.08, 0.05)) +
 	scale_fill_manual(values=mycolors) +
 	theme_bw() +
 	ylab("Number of genomes") +
 	xlab("Position in primer sequence") +
-	theme(legend.title = element_blank(), 
+	theme(legend.position = "blank", 
 		  axis.text = element_text(size=8),
 		  axis.title = element_text(size=8.5)) 
   myplot
@@ -145,24 +155,28 @@ plot_individual_probe_mutations <- function(mydf) {
 	select(-genomes_with_mutation) %>%
 	left_join(distinct(select(probe_result, ori_probe, count_genomes_present)), by="ori_probe") %>%
 	group_by(position, ori_probe) %>%
-	mutate(count_wildtype = count_genomes_present - count_genomes_with_mutation) %>%
+	mutate(count_wildtype = count_genomes_present - sum(count_genomes_with_mutation)) %>%
 	select(-count_genomes_present) %>% 
 	pivot_longer(c(count_genomes_with_mutation, count_wildtype), names_to="category", values_to="count") %>% 
 	mutate(mutation=case_when(category=="count_wildtype" ~ "WT", TRUE ~ mutation)) %>%
-	distinct()
+	distinct() %>%
+	ungroup() %>%
+	group_by(ori_probe, position) %>%
+	mutate(percentage = count/sum(count)*100)
   plotdf$position <- factor(plotdf$position, levels=sort(unique(plotdf$position)))
   
   myplot <- plotdf %>%
-	ggplot(aes(x=position, y=count, group=mutation)) +
+	ggplot(aes(x=position, y=count)) +
 	geom_bar(aes(fill=mutation), position="stack", stat="identity") +
-	geom_text_repel(aes(label=mutation), position = position_stack(vjust=0.5), size=2.5, point.size=NA) +
+	geom_text(aes(label=ifelse(percentage >=3, mutation, NA_character_), group=mutation),
+					position = position_stack(vjust=0.5), max.overlaps=5, size=2.5, point.size=NA) +
 	facet_wrap(.~ori_probe, scales="free_x") + 
 	scale_y_continuous(expand=c(0.01, 0.01)) +
 	scale_fill_manual(values=mycolors) +
 	theme_bw() +
 	ylab("Number of genomes") +
 	xlab("Position in probe sequence") +
-	theme(legend.title = element_blank(), 
+	theme(legend.position = "blank", 
 		  axis.text = element_text(size=8),
 		  axis.title = element_text(size=8.5)) 
   myplot

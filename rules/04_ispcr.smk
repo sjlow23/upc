@@ -230,14 +230,14 @@ rule get_missing_amplicons:
 				out={params.resultdir}/"$genome".fasta \
 				include=t \
 				fake=f
-
+			
 				for i in {params.resultdir}/*.sam; do \
 				awk -F "\t" 'BEGIN {{
 					comp["A"] = "T"; comp["T"] = "A"; comp["C"] = "G"; comp["G"] = "C"
 				}}
-				$2 != 4 && $2 != 20
-				{{
-					if ($1 ~ /^r_/) {{
+				$2 != 4 && $2 != 20 {{
+					if ($2 ~ /16/) {{
+						# If the alignment is on the reverse strand (FLAG 16), reverse complement the sequence
 						seq = $10
 						rev_comp = ""
 						for (i = length(seq); i > 0; i--) {{
@@ -245,6 +245,7 @@ rule get_missing_amplicons:
 						}}
 						$10 = rev_comp
 					}}
+					# Print the line with the sequence either reversed or not
 					print
 				}}' OFS="\t" "$i" | sed 's/^r_//g' > "$i".rc; done
 

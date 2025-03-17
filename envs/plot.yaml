@@ -8,3 +8,4 @@ dependencies:
  - r-ggplot2
  - r-ggrepel
  - r-cowplot
+ - r-wesanderson

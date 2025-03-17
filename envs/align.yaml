@@ -1,8 +1,10 @@
 channels:
  - bioconda
+ - conda-forge
 
 dependencies:
  - mafft
  - seqkit
  - bbmap
  - trimal
+ - conda-forge::parallel

@@ -1,6 +1,6 @@
 import os
 
-configfile: "config/config_denv.yaml"
+configfile: "config/config_denv2.yaml"
 
 OUTDIR = directory(config["params"]["OUTDIR"])
 CPU = config["params"]["CPU"]
@@ -202,7 +202,11 @@ rule_all_input = [
 	get_primersets_t,
 	OUTDIR + "status/collate_primers_target.txt",
 	OUTDIR + "status/summary_primers_target.txt",
-	OUTDIR + "status/plot_stats.txt"
+	OUTDIR + "status/plot_stats.txt",
+	OUTDIR + "status/summarise_genomes_primers.txt",
+	OUTDIR + "status/summarise_genomes_probes.txt",
+	OUTDIR + "status/make_alignment_missing.txt",
+	OUTDIR + "status/generate_report.txt"
 	
 ]
 
@@ -246,8 +250,9 @@ rule all:
 include: "rules/01_get_genomes_target.smk"
 include: "rules/02_get_genomes_offtarget.smk"
 include: "rules/03_prepare_primers_probes.smk"
-include: "rules/04_ispcr.smk"
+include: "rules/04_ispcr_refactor.smk"
 include: "rules/05_align_primers.smk"
 include: "rules/06_align_probes.smk"
 include: "rules/07_plot_stats.smk"
+include: "rules/08_generate_report.smk"
 

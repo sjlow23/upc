@@ -12,10 +12,11 @@ args <- commandArgs(trailingOnly=TRUE)
 # Read alignment file
 aln <- readDNAStringSet(args[1])
 output <- args[2]
+probes_expand <- fread(args[3], header=F, sep="\t")
+names(probes_expand) <- c("ori_primer", "probe_set", "probe")
 
 # Extract the header of the first sequence
 header <- names(aln)[1]  # Get the header of the first sequence
-
 
 # Split the header by double dashes extract relevant fields
 header_fields <- strsplit(header, split='--')[[1]]
@@ -96,11 +97,13 @@ compare_to_reference <- function(sequences, reference, type) {
 probe_result <- compare_to_reference(sequences=probe, reference=probe_ref, type="Probe")
 
 probe_result <- probe_result %>%
-	mutate(ori_probe=probe_set) %>%
+	left_join(select(probes_expand, ori_primer, probe_set), by="probe_set") %>%
+	#mutate(ori_probe=probe_set) %>%
 	#separate(probe_set, into=c("ori_probe", "probe"), sep="_", remove=F) %>%
-	select(-probe_set) %>%
+	rename(ori_probe = probe_set) %>%
 	relocate(ori_probe) %>%
-	relocate(genome, .after=probe_seq)
+	relocate(ori_primer, .after = ori_probe) %>%
+	relocate(genome, .after = probe_seq)
 
 
 # Write probe result

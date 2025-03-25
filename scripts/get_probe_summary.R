@@ -9,7 +9,7 @@ library(data.table)
 
 args <- commandArgs(trailingOnly=TRUE)
 
-# Read collated primer file
+# Read collated probe file
 probe_result <- fread(args[1], header=T, sep="\t")
 
 output_pergenome <- args[2]
@@ -18,18 +18,26 @@ output_perprobe <- args[4]
 output_pergenome_mismatches <- args[5]
 output_grouped <- args[6]
 output_missing <- args[7]
-genomelist <- gsub(".fna", "", readLines(args[8]))
-
-origenomecount <- as.numeric(args[9])
-category <- args[10]
+output_status <- args[8]
+genomelist <- gsub(".fna", "", readLines(args[9]))
+origenomecount <- as.numeric(args[10])
+probes_expand <- fread(args[11], header=F, sep="\t")
+names(probes_expand) <- c("ori_primer", "ori_probe", "probe")
+category <- args[12]
 
 
 # Get combinations of probes, genomes, and type
+# combinations <- expand.grid(
+# 	genome = unique(probe_result$genome),
+# 	ori_probe = unique(probe_result$ori_probe),
+# 	type = unique(probe_result$type)
+# )
 combinations <- expand.grid(
 	genome = unique(probe_result$genome),
-	ori_probe = unique(probe_result$ori_probe),
+	ori_primer = unique(probe_result$ori_primer),
 	type = unique(probe_result$type)
 )
+
 
 # Number of genomes amplified per probeset (including perfect matches)
 amplified_summary <- probe_result %>%
@@ -55,10 +63,11 @@ summary_pergenome <- probe_result.subset %>%
 	filter(mismatch == min(mismatch)) %>%
 	filter(mismatch != 0) %>% 
 	ungroup() %>% 
-	group_by(genome, ori_probe, type) %>% 
+	group_by(genome, ori_probe, probe_seq, type) %>% 
 	summarize(count_mismatches = n_distinct(mutation), 
 						positions = toString(unique(position)),
-						mutations = toString(unique(mutation)))
+						mutations = toString(unique(mutation)),
+						binding_sites = toString(unique(binding_site)))
 
 if (nrow(summary_pergenome) > 0) {
 	fwrite(summary_pergenome, file=output_pergenome, col.names=T, row.names=F, sep="\t", quote=F)
@@ -71,13 +80,13 @@ if (nrow(summary_pergenome) > 0) {
 # Get missing genomes
 if (category == "target") {
 	summary_missing <- probe_result %>%
-	group_by(ori_probe) %>%
+	group_by(ori_primer) %>%
 	summarize(count_genomes_present = n_distinct(genome),
 			  count_genomes_missing = origenomecount - count_genomes_present,
 			  genomes_missing = toString(setdiff(genomelist, genome)))
 } else {
 	summary_missing <- probe_result %>%
-	group_by(ori_probe) %>%
+	group_by(ori_primer) %>%
 	summarize(count_genomes_present = n_distinct(genome),
 			  count_genomes_missing = origenomecount - count_genomes_present,
 			  genomes_present = toString(unique(genome)))
@@ -97,21 +106,27 @@ if (nrow(summary_missing) > 0) {
 # Low: mutation at any other location
 
 summary_permutation_combo <- summary_pergenome %>%
+	left_join(select(probes_expand, ori_probe, ori_primer), by="ori_probe") %>%
 	select(-count_mismatches) %>%
-	group_by(ori_probe, type, mutations) %>% 
-	summarize(count_genomes_with_mutation = n_distinct(genome), genomes_with_mutation = toString(unique(genome))) %>%
+	group_by(ori_probe, ori_primer, probe_seq, binding_sites, type, mutations) %>% 
+	summarize(count_genomes_with_mutation = n_distinct(genome), 
+				genomes_with_mutation = toString(unique(genome)),
+				probe_sequence = toString(unique(probe_seq)),
+				binding_site = toString(unique(binding_sites))) %>%
 	ungroup() %>%
 	left_join(amplified_summary, by="ori_probe") %>%
-	mutate(perc_with_mutation_present = round(count_genomes_with_mutation/count_genomes_present*100, 2),
+	mutate(count_db_genomes = origenomecount,
+		   perc_with_mutation_present = round(count_genomes_with_mutation/count_genomes_present*100, 2),
 		   perc_with_mutation_total = round(count_genomes_with_mutation/origenomecount*100, 2)) %>%
 	mutate(position = str_extract_all(mutations, "(?<=\\D)(\\d+)(?=\\D)")) %>%
 	mutate(position = sapply(position, function(x) paste(x, collapse = ", ")),
 		   count_mismatches = str_count(mutations, pattern=",") + 1) %>%
 	mutate(alert = case_when(count_mismatches >= 2 ~ "Medium", TRUE ~ "Low")) %>%
-	select(-count_mismatches) %>%
+	select(-probe_seq, -binding_sites, -count_mismatches) %>%
 	relocate(genomes_with_mutation, .after = last_col()) %>%
+	relocate(count_genomes_with_mutation, .after = binding_site) %>%
 	relocate(alert, .after = mutations) %>%
-	arrange(ori_probe, type)
+	arrange(ori_primer, type)
 		   
 
 if (nrow(summary_permutation_combo) > 0) {
@@ -120,6 +135,34 @@ if (nrow(summary_permutation_combo) > 0) {
 	file.create(output_permutation_combo)
 }
 
+# summary_permutation_combo2 <- summary_pergenome %>%
+# 	select(-count_mismatches) %>%
+# 	group_by(ori_probe, probe_seq, binding_sites, type, mutations) %>% 
+# 	summarize(count_genomes_with_mutation = n_distinct(genome), 
+# 				genomes_with_mutation = toString(unique(genome)),
+# 				probe_sequence = toString(unique(probe_seq)),
+# 				binding_site = toString(unique(binding_sites))) %>%
+# 	ungroup() %>%
+# 	left_join(amplified_summary, by="ori_probe") %>%
+# 	mutate(count_db_genomes = origenomecount,
+# 		   perc_with_mutation_present = round(count_genomes_with_mutation/count_genomes_present*100, 2),
+# 		   perc_with_mutation_total = round(count_genomes_with_mutation/origenomecount*100, 2)) %>%
+# 	mutate(position = str_extract_all(mutations, "(?<=\\D)(\\d+)(?=\\D)")) %>%
+# 	mutate(position = sapply(position, function(x) paste(x, collapse = ", ")),
+# 		   count_mismatches = str_count(mutations, pattern=",") + 1) %>%
+# 	mutate(alert = case_when(count_mismatches >= 2 ~ "Medium", TRUE ~ "Low")) %>%
+# 	select(-probe_seq, -binding_sites, -count_mismatches) %>%
+# 	relocate(genomes_with_mutation, .after = last_col()) %>%
+# 	relocate(count_genomes_with_mutation, .after = binding_site) %>%
+# 	relocate(alert, .after = mutations) %>%
+# 	arrange(ori_probe, type)
+		   
+
+# if (nrow(summary_permutation_combo) > 0) {
+# 	fwrite(summary_permutation_combo, file=output_permutation_combo, col.names=T, row.names=F, sep="\t", quote=F)
+# } else {
+# 	file.create(output_permutation_combo2)
+# }
 
 # Per probeset ori and position combo, mutations
 summary_perprobe <- probe_result.subset %>% 
@@ -130,7 +173,9 @@ summary_perprobe <- probe_result.subset %>%
 	ungroup() %>%
 	group_by(ori_probe, position, mutation, type) %>% 
 	summarize(genomes_with_mutation = toString(unique(genome)),
-						count_genomes_with_mutation = n_distinct(genome))
+						count_genomes_with_mutation = n_distinct(genome)) %>%
+	left_join(select(probes_expand, ori_probe, ori_primer), by="ori_probe") %>%
+	relocate(ori_primer, .after = ori_probe)
 
 if (nrow(summary_perprobe) > 0) {
 	fwrite(summary_perprobe, file=output_perprobe, col.names=T, row.names=F, sep="\t", quote=F)
@@ -148,7 +193,8 @@ summary_pergenome_mismatches <- probe_result.subset %>%
 	filter(mismatch!=0) %>% 
 	ungroup() %>% 
 	group_by(genome, ori_probe, type) %>%
-	summarize(mismatches = n_distinct(position))
+	summarize(mismatches = n_distinct(position)) %>%
+	left_join(select(probes_expand, ori_primer, ori_probe), by="ori_probe")
 
 if (nrow(summary_pergenome_mismatches) > 0) {
 	fwrite(summary_pergenome_mismatches, file=output_pergenome_mismatches, col.names=T, row.names=F, sep="\t", quote=F)
@@ -159,22 +205,76 @@ if (nrow(summary_pergenome_mismatches) > 0) {
 
 # Add in genomes with perfect matches
 present <- summary_pergenome_mismatches %>% 
-	select(genome, ori_probe, type) %>%
+	select(genome, ori_primer, ori_probe, type) %>%
 	distinct()
 missing_combinations <- combinations %>% 
-	anti_join(present)
+	anti_join(present) %>%
+	mutate(ori_probe = NA)
 
-summary_pergenome_mismatches <- bind_rows(summary_pergenome_mismatches, missing_combinations) %>%
-	replace(is.na(.), 0) %>%
-	pivot_wider(names_from="type", values_from="mismatches")
+# Best ori probe match for each genome
+perfectgenomes <- missing_combinations %>% 
+	filter(is.na(ori_probe)) %>%
+	pull(genome)
+probe_bestmatch <- probe_result %>%
+	filter(genome %in% perfectgenomes) %>%
+	select(genome, ori_probe) %>%
+	distinct() %>%
+	dplyr::rename(ori_probe_final = ori_probe)
 
-if (nrow(summary_pergenome_mismatches) > 0) {
-	fwrite(summary_pergenome_mismatches, file=output_grouped, col.names=T, row.names=F, sep="\t", quote=F)
+summary_pergenome_mismatches_grouped <- bind_rows(summary_pergenome_mismatches, missing_combinations) %>%
+	mutate(mismatches = replace(mismatches, is.na(mismatches), 0)) %>%
+	left_join(probe_bestmatch, by="genome") %>%
+	mutate(ori_probe = case_when(is.na(ori_probe) ~ ori_probe_final, TRUE ~ ori_probe)) %>%
+	select(-ori_probe_final)
+	#left_join(select(probes_expand, ori_primer, ori_probe), by="ori_probe") 
+	#pivot_wider(names_from="type", values_from="mismatches")
+
+if (nrow(summary_pergenome_mismatches_grouped) > 0) {
+	fwrite(summary_pergenome_mismatches_grouped, file=output_grouped, col.names=T, row.names=F, sep="\t", quote=F)
 } else {
 	file.create(output_grouped)
 }
 
 
+# Summarise per genome status
+pergenome_status <- summary_pergenome_mismatches_grouped %>%
+	#left_join(select(probes_expand, ori_primer, ori_probe), by="ori_probe") %>%
+	mutate(sum_mismatches = sum(mismatches)) %>%
+	mutate(status = case_when(sum_mismatches == 0 ~ "Probe perfect match",
+							 sum_mismatches != 0 ~ "Probe with mismatch")) %>%
+	select(genome, ori_primer, status)
+
+#Unique probes
+uniq_primers <- unique(pergenome_status$ori_primer)
+
+# List to store missing genomes for each primer set
+missinglist <- list()
+
+for (primer in uniq_primers) {
+	present <- pergenome_status %>%
+		filter(ori_primer == primer) %>%
+		pull(genome)
+	missing <- setdiff(genomelist, present)
+	if (length(missing) != 0) {
+		missinglist[[primer]] <- data.frame(genome = missing, ori_primer = primer, status = "Not present")
+	}
+}
+
+missingdf <- bind_rows(missinglist)
+
+pergenome_status <- bind_rows(pergenome_status, missingdf) %>%
+	relocate(genome)
+
+# missinggenomes <- genomelist[!genomelist %in% pergenome_status$genome]
+# missingdf <- data.frame(ori_probe=unique(pergenome_status$ori_probe), 
+# 						genome=missinggenomes, status="Not present")
+
+
+if (nrow(pergenome_status) > 0) {
+	fwrite(pergenome_status, file=output_status, col.names=T, row.names=F, sep="\t", quote=F)
+} else {
+	file.create(output_status)
+}
 
 ##################################################################################################################
 

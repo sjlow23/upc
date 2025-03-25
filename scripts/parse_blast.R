@@ -21,11 +21,19 @@ process_df <- function(mydf, outfile) {
 
 	mydf <- mydf %>%
 		left_join(probedf, by="probe") %>%
-		group_by(probe, genome, ref) %>% 
+		#group_by(probe, genome, ref) %>% 
+		#group_by(genome, primerset) %>%
+		group_by(genome, probe, ref) %>%
+		filter(pident==max(pident) & nident==max(nident)) %>%
+		#break ties
+		slice_head(n=1) %>%
+		group_by(genome, probe, ref) %>%
+		#group_by(genome, primerset, ref) %>%
 		summarize(sequence=toString(unique(sseq))) %>%
 		distinct() %>%
 		ungroup() %>%
 		mutate(header = paste0(genome, "--", probe, "--", ref, sep="")) 
+		#mutate(header = paste0(genome, "--", primerset, "--", ref, sep=""))
 	
 	write.fasta(sequences=as.list(mydf$sequence), names=mydf$header, file.out=outfile)
 	

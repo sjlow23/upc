@@ -105,8 +105,8 @@ result_rev <- compare_to_reference(sequences=rev, reference=rev_ref, type="Rev")
 primer_result <- bind_rows(result_fwd, result_rev)
 
 primer_result <- primer_result %>%
-	mutate(ori_primer=primer_set) %>%
-	#left_join(select(primers_expand, ori_primer, primer_set), by=c("primer_set") %>%
+	#mutate(ori_primer=primer_set) %>%
+	left_join(select(primers_expand, ori_primer, primer_set), by=c("primer_set")) %>%
 	relocate(ori_primer, .after=primer_set) %>%
 	relocate(genome, .after=primer_seq)
 

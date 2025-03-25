@@ -7,5 +7,7 @@ dependencies:
  - r-tidyr
  - r-ggplot2
  - r-ggrepel
+ - r-ggalluvial
+ - r-ggmsa
  - r-cowplot
  - r-wesanderson

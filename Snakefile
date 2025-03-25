@@ -4,7 +4,7 @@ configfile: "config/config_denv2.yaml"
 
 OUTDIR = directory(config["params"]["OUTDIR"])
 CPU = config["params"]["CPU"]
-
+MIN_GENOME_SIZE = config["params"]["MIN_GENOME_SIZE"]
 PRIMERS = config["params"]["PRIMERS"]
 
 MAX_AMPLICON_SIZE = config["ispcr"]["MAX_AMPLICON_SIZE"]
@@ -17,6 +17,11 @@ if config["amplicon"]["MAX_MISMATCHES"]:
 	MAX_MISMATCH = config["amplicon"]["MAX_MISMATCHES"]
 else:
 	MAX_MISMATCH = 6
+
+if config["probe"]["MAX_MISMATCHES"]:
+	PROBE_MAX_MISMATCH = config["probe"]["MAX_MISMATCHES"]
+else:
+	PROBE_MAX_MISMATCH = 5
 
 if config["params"]["SUBSAMPLE_TARGET"]:
 	SUBSAMPLE_TARGET = config["params"]["SUBSAMPLE_TARGET"]
@@ -167,25 +172,25 @@ def get_missing_samples(wildcards):
 # Gather probe results from checkpoints
 ############################################################
 def get_probes_t(wildcards):
-	target_dir = checkpoints.parse_blast_target.get(**wildcards).output.probe_target_dir
+	target_dir = checkpoints.parse_probes_target.get(**wildcards).output.probe_target_dir
 	TARGET = expand(OUTDIR + "ispcr_target/probes/{probe}.fasta", 
 					probe = glob_wildcards(os.path.join(target_dir, "{probe}.fasta")).probe)
 	return TARGET
 
 def get_probes_ot(wildcards):
-	offtarget_dir = checkpoints.parse_blast_offtarget.get(**wildcards).output.probe_offtarget_dir
+	offtarget_dir = checkpoints.parse_probes_offtarget.get(**wildcards).output.probe_offtarget_dir
 	OFFTARGET = expand(OUTDIR + "ispcr_offtarget/probes/{probe}.fasta", 
 					probe = glob_wildcards(os.path.join(offtarget_dir, "{probe}.fasta")).probe)
 	return OFFTARGET
 
 def get_probes_tsv_t(wildcards):
-	target_dir = checkpoints.parse_blast_target.get(**wildcards).output.probe_target_dir
+	target_dir = checkpoints.parse_probes_target.get(**wildcards).output.probe_target_dir
 	TARGET = expand(OUTDIR + "ispcr_target/probe_parsed/{probe}.tsv", 
 					probe = glob_wildcards(os.path.join(target_dir, "{probe}.fasta")).probe)
 	return TARGET
 
 def get_probes_tsv_ot(wildcards):
-	offtarget_dir = checkpoints.parse_blast_offtarget.get(**wildcards).output.probe_offtarget_dir
+	offtarget_dir = checkpoints.parse_probes_offtarget.get(**wildcards).output.probe_offtarget_dir
 	OFFTARGET = expand(OUTDIR + "ispcr_offtarget/probe_parsed/{probe}.tsv", 
 					probe = glob_wildcards(os.path.join(offtarget_dir, "{probe}.fasta")).probe)
 	return OFFTARGET
@@ -203,8 +208,6 @@ rule_all_input = [
 	OUTDIR + "status/collate_primers_target.txt",
 	OUTDIR + "status/summary_primers_target.txt",
 	OUTDIR + "status/plot_stats.txt",
-	OUTDIR + "status/summarise_genomes_primers.txt",
-	OUTDIR + "status/summarise_genomes_probes.txt",
 	OUTDIR + "status/make_alignment_missing.txt",
 	OUTDIR + "status/generate_report.txt"
 	
@@ -250,9 +253,9 @@ rule all:
 include: "rules/01_get_genomes_target.smk"
 include: "rules/02_get_genomes_offtarget.smk"
 include: "rules/03_prepare_primers_probes.smk"
-include: "rules/04_ispcr_refactor.smk"
+include: "rules/04_ispcr_refactor_bbmap.smk"
 include: "rules/05_align_primers.smk"
-include: "rules/06_align_probes.smk"
+include: "rules/06_align_probes_seqkit.smk"
 include: "rules/07_plot_stats.smk"
 include: "rules/08_generate_report.smk"
 

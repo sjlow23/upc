@@ -8,3 +8,6 @@ dependencies:
  - bbmap
  - trimal
  - conda-forge::parallel
+ - r-ggmsa
+ - r-ggplot2
+ - bioconda::bioconductor-biostrings

@@ -1,0 +1,11 @@
+channels:
+ - bioconda
+ - conda-forge
+
+dependencies:
+ - mafft
+ - seqkit
+ - r-ggmsa
+ - r-ggplot2
+ - bioconda::bioconductor-biostrings
+ - conda-forge::imagemagick

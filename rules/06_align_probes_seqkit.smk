@@ -31,9 +31,7 @@ rule locate_probes_offtarget:
 		max_mismatch = PROBE_MAX_MISMATCH,
 	shell:
 		"""
-		#sed -i "s/ /--/1" {input.amplicons}
 		seqkit locate --max-mismatch {params.max_mismatch} --pattern-file {input.probes} {input.amplicons} > {output.location}
-		#sed -i "s/--/ /1" {input.amplicons}
 		touch {output.status}
 		"""
 

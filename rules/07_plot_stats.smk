@@ -2,11 +2,19 @@ rule plot_stats:
 	input:
 		primers_combo = rules.summary_primers_target.output.percombo,
 		primers_mutation = rules.summary_primers_target.output.perprimer,
+		primers_status = rules.summary_primers_target.output.genomestatus,
 		probes_combo = rules.summary_probes_target.output.percombo,
 		probes_mutation = rules.summary_probes_target.output.perprobe,
+		probes_grouped = rules.summary_probes_target.output.grouped,
+		probes_status = rules.summary_probes_target.output.genomestatus,
 	output:
 		primerplot = OUTDIR + "stats_primers/primerplot.pdf",
 		probeplot = OUTDIR + "stats_probes/probeplot.pdf",
+		primer_combo_plot = OUTDIR + "primer_combo_plot.png",
+		primer_mutation_plot = OUTDIR + "primer_mutation_plot.png",
+		probe_combo_plot = OUTDIR + "probe_combo_plot.png",
+		probe_mutation_plot = OUTDIR + "probe_mutation_plot.png",
+		alluvial_plot = OUTDIR + "alluvial_plot.png",
 		status = OUTDIR + "status/plot_stats.txt"
 	conda: "../envs/plot.yaml"
 	threads: 16
@@ -16,109 +24,123 @@ rule plot_stats:
 		Rscript scripts/plot_stats.R \
 		{input.primers_combo} \
 		{input.primers_mutation} \
+		{input.primers_status} \
 		{input.probes_combo} \
 		{input.probes_mutation} \
+		{input.probes_grouped} \
+		{input.probes_status} \
 		{output.primerplot} \
-		{output.probeplot}
+		{output.probeplot} \
+		{output.primer_combo_plot} \
+		{output.primer_mutation_plot} \
+		{output.probe_combo_plot} \
+		{output.probe_mutation_plot} \
+		{output.alluvial_plot}
 		
 		touch {output.status}
 		"""
 
-
-rule summarise_genomes_primers:
+rule plot_piechart:
 	input:
-		rules.plot_stats.output.status,
-		mismatch = OUTDIR + "stats_primers/target/stats_mismatches.tsv",
-		missing = OUTDIR + "stats_primers/target/stats_genomes_missing.tsv",
-		primers = OUTDIR + "primers_expand.txt"
+		primers = rules.summary_primers_target.output.genomestatus,
+		probes = rules.summary_probes_target.output.genomestatus,
 	output:
-		stats = OUTDIR + "stats_primers/target/genome_status.txt",
-		status = OUTDIR + "status/summarise_genomes_primers.txt"
+		primerpie = OUTDIR + "primer_piechart.png",
+		probepie = OUTDIR + "probe_piechart.png",
+		status = OUTDIR + "status/plot_piechart.txt"
 	params:
 		outdir = OUTDIR,
-		statsdir = OUTDIR + "stats_primers/target",
-		subsample = SUBSAMPLE_TARGET,
-	conda: "../envs/primer_mismatch.yaml"
+	conda: "../envs/plot.yaml"
 	shell:
 		"""
-		if [[ {params.subsample} != "no" ]]; then
-			genomelist="{params.outdir}/target_genomes_subsampled.txt"
-		else
-			genomelist="{params.outdir}/target_genomes.txt"
-		fi
-
-		Rscript scripts/get_genome_summary.R {input.mismatch} {input.missing} {input.primers} {output.stats} $genomelist primers
+		Rscript scripts/plot_piechart.R {input.primers} {input.probes} {output.primerpie} {output.probepie}
 
 		touch {output.status}
 		"""
-
-
-rule summarise_genomes_probes:
-	input:
-		rules.plot_stats.output.status,
-		mismatch = OUTDIR + "stats_probes/target/stats_mismatches.tsv",
-		missing = OUTDIR + "stats_probes/target/stats_genomes_missing.tsv",
-	output:
-		stats = OUTDIR + "stats_probes/target/genome_status.txt",
-		status = OUTDIR + "status/summarise_genomes_probes.txt"
-	params:
-		outdir = OUTDIR,
-		statsdir = OUTDIR + "stats_probes/target",
-		subsample = SUBSAMPLE_TARGET,
-		probes = OUTDIR + "probes_expand.txt"
-	conda: "../envs/primer_mismatch.yaml"
-	shell:
-		"""
-		if [[ {params.subsample} != "no" ]]; then
-			genomelist="{params.outdir}/target_genomes_subsampled.txt"
-		else
-			genomelist="{params.outdir}/target_genomes.txt"
-		fi
-
-		Rscript scripts/get_genome_summary.R {input.mismatch} {input.missing} {params.probes} {output.stats} $genomelist probes
-
-		touch {output.status}
-		"""
-
-
 
 rule make_alignment_missing:
 	input:
-		rules.summarise_genomes_primers.output.status,
-		primers = rules.summarise_genomes_primers.output.stats,
-		probes = rules.summarise_genomes_probes.output.stats,
-		primerlist = OUTDIR + "primers_expand.txt"
+		rules.summary_primers_target.output.status,
+		grouped = rules.summary_primers_target.output.grouped,
+		primerstatus = rules.summary_primers_target.output.genomestatus,
+		primers = OUTDIR + "primers_expand.txt"
 	output:
+		msaplot = OUTDIR + "msaplot_primers.png",
 		status = OUTDIR + "status/make_alignment_missing.txt"
 	params:
 		outdir = OUTDIR,
 		targetdir = GENOMES_TARGET,
-		alndir = OUTDIR + "check_alignments"
-	conda: "../envs/align.yaml",
+		alndir = OUTDIR + "check_alignments",
+		mode = "primer"
+	conda: "../envs/msaplot.yaml",
 	threads: CPU
 	shell:
 		"""
-		mkdir -p {params.alndir}
+		if grep -qw "Not amplified" {input.primerstatus}; then
+			mkdir -p {params.alndir}
+			cut -f1 {input.primers} | sort | uniq > {params.outdir}/primerlist.txt
 
-		cut -f1 {input.primerlist} | sort | uniq > {params.outdir}/primerlist.txt
+			./scripts/missing_alignments.sh \
+			{params.outdir}/primerlist.txt \
+			{params.targetdir} \
+			{params.alndir} \
+			{input.grouped} \
+			{input.primerstatus} \
+			{input.primers} \
+			{params.mode} \
+			{threads}
 
-		while read primer
-		do
-			grep "not amplified" {input.primers} | grep -w "$primer" | cut -f1 > {params.outdir}/keep_"$primer".txt
-			grep "not present" {input.probes} | grep -w "$primer" | cut -f1 >> {params.outdir}/keep_"$primer".txt
+			# Merge png plots
+			magick convert {params.alndir}/*.png -bordercolor white -border 0x150 -append {output.msaplot}
+	
+			rm {params.outdir}/primerlist.txt {params.alndir}/*.png
+		else
+			touch {output.msaplot}
+		fi
 
-			if [[ -s {params.outdir}/keep_"$primer".txt ]]; then
-				grep -i perfect {input.primers} | shuf -n20 | cut -f1 >> {params.outdir}/keep_"$primer".txt
-				grep -i mismatch {input.primers} | shuf -n10 | cut -f1 >> {params.outdir}/keep_"$primer".txt
+		touch {output.status}
+		"""
 
-				sort {params.outdir}/keep_"$primer".txt | uniq > {params.outdir}/keep2_"$primer".txt
+rule make_probe_missing:
+	input:
+		rules.make_alignment_missing.output.status,
+		rules.summary_probes_target.output.status,
+		grouped = rules.summary_probes_target.output.grouped,
+		probestatus = rules.summary_probes_target.output.genomestatus,
+	output:
+		msaplot = OUTDIR + "msaplot_probes.png",
+		status = OUTDIR + "status/make_probe_missing.txt"
+	params:
+		outdir = OUTDIR,
+		targetdir = GENOMES_TARGET,
+		alndir = OUTDIR + "check_alignments",
+		probes = OUTDIR + "probes_expand.txt",
+		mode = "probe"
+	conda: "../envs/msaplot.yaml",
+	threads: CPU
+	shell:
+		"""
+		if grep -qw "Not present" {input.probestatus}; then
+			mkdir -p {params.alndir}
+			cut -f1 {params.probes} | sort | uniq > {params.outdir}/probelist.txt
 
-				for i in `cat {params.outdir}/keep2_"$primer".txt`; do \
-					cat {params.targetdir}/"$i".fna >> {params.alndir}/check_"$primer".fasta; done
-				einsi --thread {threads} {params.alndir}/check_"$primer".fasta > {params.alndir}/check_"$primer".aln
-				rm {params.outdir}/keep_"$primer".txt {params.outdir}/keep2_"$primer".txt
-			fi
-		done < {params.outdir}/primerlist.txt
+			./scripts/missing_alignments.sh \
+			{params.outdir}/probelist.txt \
+			{params.targetdir} \
+			{params.alndir} \
+			{input.grouped} \
+			{input.probestatus} \
+			{params.probes} \
+			{params.mode} \
+			{threads}
+
+			# Merge png plots
+			magick convert {params.alndir}/*.png -bordercolor white -border 0x150 -append {output.msaplot}
+		
+			rm {params.outdir}/probelist.txt {params.alndir}/*.png
+		else
+			touch {output.msaplot}
+		fi
 
 		touch {output.status}
 		"""

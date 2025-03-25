@@ -199,6 +199,23 @@ rule collate_primers_target:
 		"""
 
 
+rule select_best_primermatch_target:
+	input:
+		target = rules.collate_primers_target.output.target,
+	output:
+		target = OUTDIR + "stats_primers/target/summary_primers_bestmatch.tsv",
+		status = OUTDIR + "status/best_primer_target.txt"
+	conda: "../envs/primer_mismatch.yaml"
+	params:
+		outdir = OUTDIR + "stats_primers"
+	shell:
+		"""
+		mkdir -p {params.outdir}/target
+		Rscript scripts/get_best_match.R {input.target} {output.target} primer
+		touch {output.status}
+		"""
+
+
 rule collate_primers_offtarget:
 	input:
 		offtarget = get_primers_offtarget_tsv,
@@ -227,9 +244,34 @@ rule collate_primers_offtarget:
 		"""
 
 
+rule select_best_primermatch_offtarget:
+	input:
+		offtarget = rules.collate_primers_offtarget.output.offtarget,
+	output:
+		offtarget = OUTDIR + "stats_primers/offtarget/summary_primers_bestmatch.tsv",
+		status = OUTDIR + "status/best_primer_offtarget.txt"
+	conda: "../envs/primer_mismatch.yaml"
+	params:
+		outdir = OUTDIR + "stats_primers"
+	shell:
+		"""
+		mkdir -p {params.outdir}/offtarget
+
+		if [[ -s {input.offtarget} ]]
+		then
+			Rscript scripts/get_best_match.R {input.offtarget} {output.offtarget} primer
+		else
+			touch {output.offtarget}
+		fi
+
+		touch {output.status}
+		"""
+
+
 rule summary_primers_target:
 	input:
-		target = rules.collate_primers_target.output.target,
+		target = rules.select_best_primermatch_target.output.target,
+		#target = rules.collate_primers_target.output.target,
 	output:
 		pergenome = OUTDIR + "stats_primers/target/stats_pergenome.tsv",
 		percombo = OUTDIR + "stats_primers/target/stats_permutation_combo.tsv",
@@ -237,6 +279,7 @@ rule summary_primers_target:
 		mismatchcount = OUTDIR + "stats_primers/target/stats_mismatches.tsv",
 		grouped = OUTDIR + "stats_primers/target/stats_mismatches_grouped.tsv",
 		missing = OUTDIR + "stats_primers/target/stats_genomes_missing.tsv",
+		genomestatus = OUTDIR + "stats_primers/target/genome_status.txt",
 		status = OUTDIR + "status/summary_primers_target.txt"
 	threads: 4
 	conda: "../envs/primer_mismatch.yaml"
@@ -262,6 +305,7 @@ rule summary_primers_target:
 		{output.mismatchcount} \
 		{output.grouped} \
 		{output.missing} \
+		{output.genomestatus} \
 		{params.outdir}/$genomelist \
 		$targetcount \
 		"target"
@@ -273,7 +317,8 @@ rule summary_primers_target:
 rule summary_primers_offtarget:
 	input:
 		status = rules.collate_ispcr_offtarget.output.status,
-		offtarget = rules.collate_primers_offtarget.output.offtarget,
+		#offtarget = rules.collate_primers_offtarget.output.offtarget,
+		offtarget = rules.select_best_primermatch_offtarget.output.offtarget,
 	output:
 		pergenome = OUTDIR + "stats_primers/offtarget/stats_pergenome.tsv",
 		percombo = OUTDIR + "stats_primers/offtarget/stats_permutation_combo.tsv",
@@ -281,6 +326,7 @@ rule summary_primers_offtarget:
 		mismatchcount = OUTDIR + "stats_primers/offtarget/stats_mismatches.tsv",
 		grouped = OUTDIR + "stats_primers/offtarget/stats_mismatches_grouped.tsv",
 		missing = OUTDIR + "stats_primers/offtarget/stats_genomes_missing.tsv",
+		genomestatus = OUTDIR + "stats_primers/offtarget/genome_status.txt",
 		status = OUTDIR + "status/summary_primers_offtarget.txt"
 	threads: 4
 	conda: "../envs/primer_mismatch.yaml"
@@ -300,11 +346,12 @@ rule summary_primers_offtarget:
 			{output.mismatchcount} \
 			{output.grouped} \
 			{output.missing} \
+			{output.genomestatus} \
 			{params.genomelist} \
 			$offtargetcount \
 			"offtarget"
 		else
-			touch {output.pergenome} {output.percombo} {output.perprimer} {output.mismatchcount} {output.grouped} {output.missing}
+			touch {output.pergenome} {output.percombo} {output.perprimer} {output.mismatchcount} {output.grouped} {output.missing} {output.genomestatus}
 		fi
 
 		touch {output.status}

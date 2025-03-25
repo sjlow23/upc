@@ -17,7 +17,7 @@ rule prepare_primers:
 		
 		awk -F "\\t" '{{ print $1, toupper($2), toupper($3) }}' OFS="\\t" {input.primers} > {params.outdir}/primerstmp.txt
 		python scripts/expand_iupac.py {params.outdir}/primerstmp.txt {output.primers_expand} primers
-		cut -f1,3-4 {output.primers_expand} > {output.primers}
+		awk '{{ print $2, $3, $4 }}' OFS="\t" {output.primers_expand} > {output.primers}
 		rm {params.outdir}/primerstmp.txt
 
 		touch {output.status}

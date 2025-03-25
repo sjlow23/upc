@@ -36,20 +36,17 @@ checkpoint remove_overlaps:
 		"""
 		mkdir -p {params.newdir}
 
-		grep -wF -f {params.offtarget} {params.target} > {params.outdir}/remove
-
-		if [[ -s {params.outdir}/remove ]]
-		then
+		if grep -wF -f {params.offtarget} {params.target}; then
+			grep -wF -f {params.offtarget} {params.target} > {params.outdir}/remove
 			for i in `cat {params.outdir}/remove`; do rm {params.offtargetdir}/"$i"; done
+			rm {params.outdir}/remove
 		fi
 				
 		mv {params.offtargetdir}/* {output.offtargetdir}/
-		rm {params.outdir}/remove
 		rm -rf {params.offtargetdir}
 
 		touch {output.status}
 		"""
-
 
 rule reagg_offtarget:
 	input:
@@ -63,6 +60,7 @@ rule reagg_offtarget:
 
 checkpoint ispcr_target:
 	input:
+		rules.prepare_primers.output.status,
 		genomes = GENOMES_TARGET + "{genome}.fna",
 	output:
 		#bed = OUTDIR + "ispcr_target/bed/{genome}.bed",
@@ -71,13 +69,14 @@ checkpoint ispcr_target:
 	threads: 2
 	params:
 		outdir = OUTDIR,
+		primers = OUTDIR + "primers.txt",
 		min_perfect = MIN_PERFECT,
 		max_size = MAX_AMPLICON_SIZE,
 		tile_size = TILE_SIZE,
 		step_size = STEP_SIZE,
 	shell:
 		"""
-		isPcr {input.genomes} {params.outdir}/primers.txt {output.amp} \
+		isPcr {input.genomes} {params.primers} {output.amp} \
 			-minPerfect={params.min_perfect} \
 			-tileSize={params.tile_size} \
 			-maxSize={params.max_size} \
@@ -89,9 +88,9 @@ checkpoint ispcr_target:
 		
 		"""
 
-
 checkpoint ispcr_offtarget:
 	input:
+		rules.prepare_primers.output.status,
 		genomes = GENOMES_OFFTARGET + "{genome}.fna",
 	output:
 		#bed = OUTDIR + "ispcr_offtarget/bed/{genome}.bed",
@@ -100,13 +99,14 @@ checkpoint ispcr_offtarget:
 	threads: 2
 	params:
 		outdir = OUTDIR,
+		primers = OUTDIR + "primers.txt",
 		min_perfect = MIN_PERFECT,
 		max_size = MAX_AMPLICON_SIZE,
 		tile_size = TILE_SIZE,
 		step_size = STEP_SIZE,
 	shell:
 		"""
-		isPcr {input.genomes} {params.outdir}/primers.txt {output.amp} \
+		isPcr {input.genomes} {params.primers} {output.amp} \
 			-minPerfect={params.min_perfect} \
 			-tileSize={params.tile_size} \
 			-maxSize={params.max_size} \
@@ -117,7 +117,6 @@ checkpoint ispcr_offtarget:
 		# find {params.outdir}/ispcr_offtarget/amplicon -type f -name "*.fasta" -empty | xargs --no-run-if-empty rm
 		
 		"""
-
 
 rule collate_ispcr_target:
 	input:
@@ -137,7 +136,6 @@ rule collate_ispcr_target:
 		touch {output.status}
 		"""
 
-
 checkpoint missing_samples:
 	input:
 		rules.collate_ispcr_target.output.status,
@@ -155,20 +153,25 @@ checkpoint missing_samples:
 		mkdir -p {output.outdir}
 		grep ">" {params.ispcrdir}/target_amplicons.fasta | sed 's/:/\\t/1' | sed 's/>//g' | awk '{{ print $1, $3 }}' OFS="\\t" | sort | uniq > {params.resultdir}/hits.txt
 
-		if [[ {params.subsample} == "" || {params.subsample} == "no" ]]
+		if [[ {params.subsample} == "no" ]]
 		then
 			genomelist="{params.outdir}/target_genomes.txt"
 		else
 			genomelist="{params.outdir}/target_genomes_subsampled.txt"
 		fi
 
-		for primer in `cut -f1 {params.outdir}/primers.txt | sort | uniq`; do \
-			grep -w "$primer" {params.resultdir}/hits.txt | cut -f1 | sort | uniq | awk '{{ print $0".fna" }}' > {params.resultdir}/"$primer".txt
-			comm -23 $genomelist {params.resultdir}/"$primer".txt > {params.resultdir}/"$primer".missing; done
-		sed -i 's/.fna//g' {params.resultdir}/"$primer".missing
-	
-		"""
+		for primer in `cut -f1 {params.outdir}/primers.txt | sort | uniq`; do 
+			touch {params.resultdir}/"$primer".txt
+			if grep -qw "$primer" {params.resultdir}/hits.txt; then
+				grep -w "$primer" {params.resultdir}/hits.txt | cut -f1 | sort | uniq | awk '{{ print $0".fna" }}' >> {params.resultdir}/"$primer".txt
+			fi
 
+			#if [[ -s {params.resultdir}/"$primer".txt ]]; then 
+			comm -23 "$genomelist" {params.resultdir}/"$primer".txt > {params.resultdir}/"$primer".missing
+			sed -i 's/.fna//g' {params.resultdir}/"$primer".missing  
+			#fi
+		done	 
+		"""
 
 rule agg_missing_samples:
 	input:
@@ -180,23 +183,23 @@ rule agg_missing_samples:
 		touch {output.status}
 		"""
 
-
 rule get_missing_amplicons:
 	input:
 		rules.agg_missing_samples.output.status,
-		primers = OUTDIR + "primers.txt",
+		#primers = OUTDIR + "primers.txt",
 	output:
 		amplicons = OUTDIR + "bbmap_amplicons/target_amplicons.fasta",
 		status = OUTDIR + "status/get_missing_amplicons.txt"
 	params:
 		outdir = OUTDIR,
+		primers = OUTDIR + "primers.txt",
 		primerdir = OUTDIR + "target_nohits/",
 		resultdir = OUTDIR + "bbmap_amplicons/",
 		max_mismatch = MAX_MISMATCH,
 		targetdir = GENOMES_TARGET,
 		max_size = 200,
 	conda: "../envs/align.yaml"
-	threads: 16
+	threads: CPU
 	shell:
 		"""
 		mkdir -p {params.primerdir} {params.resultdir}
@@ -207,54 +210,30 @@ rule get_missing_amplicons:
 		myresultdir={params.resultdir}
 		mytargetdir={params.targetdir}
 
-		while read -r primer
+		while read primer
 		do
-			myprimer=$primer
-			grep -w "$primer" {input.primers} > input.txt
-			awk '{{ print ">"$1"\\n"$2 }}' input.txt > {params.primerdir}/"$primer".fwd.fasta
-			awk '{{ print ">"$1"\\n"$3 }}' input.txt > {params.primerdir}/"$primer".rev.fasta
+			if [[ -s {params.primerdir}/"$primer".missing ]]
+			then
+				myprimer=$primer
+				grep -w "$primer" {params.primers} > {params.resultdir}/input_"$primer".txt
+				awk '{{ print ">"$1"\\n"$2 }}' {params.resultdir}/input_"$primer".txt > {params.primerdir}/"$primer".fwd.fasta
+				awk '{{ print ">"$1"\\n"$3 }}' {params.resultdir}/input_"$primer".txt > {params.primerdir}/"$primer".rev.fasta
 
-			cat {params.primerdir}/"$primer".missing | awk '{{ print "./scripts/extract_amplicon.sh", $0, "'$mytargetdir'", "'$myresultdir'", "'$myprimerdir'", "'$myprimer'" }}' > {params.resultdir}/run.sh
-			cat {params.resultdir}/run.sh | parallel -j {threads}
-
-			cat {params.primerdir}/"$primer".missing | awk '{{ print "./scripts/reverse_complement.sh", "'$myresultdir'"$0".fwd.sam" }}' > {params.resultdir}/run2.sh
-			cat {params.primerdir}/"$primer".missing | awk '{{ print "./scripts/reverse_complement.sh", "'$myresultdir'"$0".rev.sam" }}' > {params.resultdir}/run3.sh
-			cat {params.resultdir}/run2.sh | parallel -j {threads}
-			cat {params.resultdir}/run3.sh | parallel -j {threads}
-
-			cat {params.resultdir}/*.fasta > {params.resultdir}/"$primer"_merged.fna
-			
-			# Add alignment info to lookup file for renaming header
-			awk -F "\\t" '{{ print $3, $1, $4, $10 }}' OFS="\\t" {params.resultdir}/*.fwd.sam.rc | sed 's/\\t/--/1' >> {params.resultdir}/fwd
-			awk -F "\\t" '{{ print $3, $1, $4+length($10)-1, $10 }}' OFS="\\t" {params.resultdir}/*.rev.sam.rc | sed 's/\\t/--/1' >> {params.resultdir}/rev
-				
-			rm {params.resultdir}/*.fwd.sam* {params.resultdir}/*.rev.sam* {params.resultdir}/*.fasta 
-			rm {params.resultdir}/run.sh {params.resultdir}/run2.sh {params.resultdir}/run3.sh
-
-			# Rename headers in fasta
-			sort -k1,1 {params.resultdir}/fwd > {params.resultdir}/fwd.sorted
-			sort -k1,1 {params.resultdir}/rev > {params.resultdir}/rev.sorted
-
-			join -1 1 -2 1 -a 1 -a 2 -e NA -o 1.1,1.2,2.2,1.3,2.3 {params.resultdir}/fwd.sorted {params.resultdir}/rev.sorted | \
-			sed 's/--/\\t/1' | \
-			awk '{{ print $1, $1":"$3"+"$4, $2, "X", $5, $6 }}' OFS="\\t" | \
-			sed 's/\\t/ /g' | \
-			sed 's/ /\\t/1' > {params.resultdir}/headers.txt
-			rm {params.resultdir}/fwd {params.resultdir}/rev {params.resultdir}/fwd.sorted {params.resultdir}/rev.sorted
-
-			seqkit replace --kv-file {params.resultdir}/headers.txt --pattern "^(\\S+)" --replacement "{{kv}}" --out-file {params.resultdir}/"$primer"_amp.fasta {params.resultdir}/"$primer"_merged.fna
-
-			rm {params.primerdir}/"$primer".fwd.fasta {params.primerdir}/"$primer".rev.fasta {params.resultdir}/headers.txt
-
+				cat {params.primerdir}/"$primer".missing | awk '{{ print "./scripts/extract_amplicon.sh", $0, "'$mytargetdir'", "'$myresultdir'", "'$myprimerdir'", "'$myprimer'" }}' > {params.resultdir}/run_"$primer".sh
+				cat {params.resultdir}/run_"$primer".sh | parallel -j {threads}
+				cat {params.resultdir}/*"$primer"_amp.fasta > {params.resultdir}/"$primer"_merged.fna
+				rm {params.resultdir}/*"$primer"_amp.fasta {params.resultdir}/input_"$primer".txt {params.resultdir}/run_"$primer".sh
+			fi
 		done < {params.outdir}/primerlist.txt
 
 		# Merge fasta from all primers
-		cat {params.resultdir}/*amp.fasta > {params.resultdir}/merged.fasta
+		cat {params.resultdir}/*_merged.fna > {params.resultdir}/merged.fasta
 
 		# Keep only amplicons of expected size
 		seqkit seq --max-len {params.max_size} {params.resultdir}/merged.fasta > {output.amplicons}
 
-		rm {params.resultdir}/*_amp.fasta {params.resultdir}/merged.fasta {params.outdir}/primerlist.txt
+		rm {params.resultdir}/merged.fasta {params.outdir}/primerlist.txt
+		rm -rf {params.primerdir}
 
 		touch {output.status}	
 		"""
@@ -274,20 +253,12 @@ rule collate_ispcr_bbmap:
 	conda: "../envs/seqkit.yaml"
 	shell:
 		"""
-		cat {input.ispcr} {input.bbmap} > {output.merged}
-
-		seqkit rmdup -s -D {params.targetdir}/duplicates_target.txt -o {output.targetdedup} {output.merged}
+		cat {input.ispcr} {input.bbmap} | seqkit seq --upper-case > {output.merged}
+		cp {output.merged} {output.targetdedup}
 		
-		if [[ -s {params.targetdir}/duplicates_target.txt ]]; then
-			cut -f2 {params.targetdir}/duplicates_target.txt | sed 's/, /\\t/1' | \
-				awk -F "\\t" '{{ print $2, $1, $1 }}' OFS="\\t" | \
-				sed 's/\\t/, /1' > {params.targetdir}/duplicates_target.tab
-		fi
-		
-		rm -rf {params.targetdir}/bed {params.targetdir}/amplicon
+		rm -rf {params.targetdir}/amplicon
 		touch {output.status}
 		"""
-
 
 rule collate_ispcr_offtarget:
 	input:
@@ -303,7 +274,7 @@ rule collate_ispcr_offtarget:
 	shell:
 		"""
 		#cat {params.offtargetdir}/bed/*.bed > {params.offtargetdir}/offtarget.bed
-		cat {params.offtargetdir}/amplicon/*.fasta > {output.offtargetamp}
+		cat {params.offtargetdir}/amplicon/*.fasta | seqkit seq --upper-case > {output.offtargetamp}
 
 		#sed -i 's/ /--/1' {output.offtargetamp}
 		seqkit rmdup -s -D {params.offtargetdir}/duplicates_offtarget.txt -o {output.offtargetdedup} {output.offtargetamp}

@@ -377,16 +377,17 @@ combined_html <- paste(title_oriprimers, table_oriprimers, "<br>", "<br>",
 					   probecomboplot, "<br>", "<br>",
 					   probemutationplot, "<br>", "<br>",
 					   alluvialplot, "<br>", "<br>",
-					   primermsaplot, "<br>", "<br>",
-					   probemsaplot, "<br>", "<br>",
+					   #primermsaplot, "<br>", "<br>",
+					   #probemsaplot, "<br>", "<br>",
 					   sep = "")
 
-# if (!is.null(primermsaplot)) {
-#   combined_html <- paste(combined_html, primermsaplot, "<br>", "<br>", sep = "")
-# }
-# if (is.null(probemsaplot)) {
-#   combined_html <- paste(combined_html, probemsaplot, "<br>", "<br>", sep = "")
-# }
+# Allow for optional MSA plot
+if (exists("primermsaplot")) {
+  combined_html <- paste(combined_html, primermsaplot, "<br>", "<br>", sep = "")
+}
+if (exists("probemsaplot")) {
+  combined_html <- paste(combined_html, probemsaplot, "<br>", "<br>", sep = "")
+}
 
 
 # Save the HTML file

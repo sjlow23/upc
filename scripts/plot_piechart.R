@@ -69,7 +69,7 @@ primerpie <- ggplot(data_primers, aes(x="", y=prop, fill=`Genome status`)) +
 		theme_void() + 
 		theme(legend.position="bottom") +
 		geom_text_repel(aes(y = ypos, label = paste0(round(prop, 1), "%")), color = "black", size=4) +
-		scale_fill_manual(values=names(primer_colors)) +
+		scale_fill_manual(values=names(primer_colors), breaks = primer_colors) +
 		facet_wrap(.~ori_primer) +
 		theme(legend.text = element_text(size=12),
 						legend.title = element_text(size=12),
@@ -81,7 +81,7 @@ probepie <- ggplot(data_probes, aes(x="", y=prop, fill=`Genome status`)) +
 		theme_void() + 
 		theme(legend.position="bottom") +
 		geom_text_repel(aes(y = ypos, label = paste0(round(prop, 1), "%")), color = "black", size=4) +
-		scale_fill_manual(values=names(probe_colors)) +
+		scale_fill_manual(values=names(probe_colors), breaks = probe_colors) +
 		facet_wrap(.~ori_primer) +
 		theme(legend.text = element_text(size=12),
 						legend.title = element_text(size=12),

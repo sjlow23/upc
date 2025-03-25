@@ -104,7 +104,6 @@ plot_mutations_primers <- function(mydf) {
 	rename(count = count_genomes_with_mutation) 
   
 	myplot <- plotdf %>%
-	#group_by(primer, mutations, alert, count_genomes_amplified, )
 		ggplot(aes(x=reorder_within(mutations, count, primer), y=count)) +
 		geom_bar(aes(fill=alert), stat="identity") +
 		geom_text(aes(label=mylabel), position = position_stack(vjust=0.5), size=2.5) +
@@ -231,32 +230,30 @@ primerplot_ind <- plot_individual_primer_mutations(primer_mutations)
 
 plot_mutations_probes <- function(mydf) {
   plotdf <- mydf %>%
-    select(-genomes_with_mutation, -probe_sequence, -binding_site) %>%
-    group_by(ori_primer, mutations, alert) %>%
-    summarize(count_genomes_with_mutation = sum(count_genomes_with_mutation),
-              count_genomes_present = mean(count_genomes_present),
-              perc_genomes_present = mean(perc_genomes_present),
-              perc_with_mutation_present = sum(perc_with_mutation_present),
-              perc_with_mutation_total = sum(perc_with_mutation_total)) %>%
-    mutate(percentage = round(count_genomes_with_mutation/count_genomes_present*100, 2),
-           mylabel=paste0(count_genomes_with_mutation, "\n","(", percentage, "%)")) %>%
-    rename(count = count_genomes_with_mutation) 
-  
+	select(-genomes_with_mutation, -probe_sequence, -binding_site) %>%
+	group_by(ori_primer, mutations, alert) %>%
+	summarize(count_genomes_with_mutation_grouped = sum(count_genomes_with_mutation),
+			  count_genomes_present_grouped = sum(count_genomes_present),
+			  perc = count_genomes_with_mutation_grouped/count_genomes_present_grouped*100) %>%
+	mutate(percentage = round(perc, 2),
+		 mylabel=paste0(count_genomes_with_mutation_grouped, "\n","(", percentage, "%)")) %>%
+  	rename(count = count_genomes_with_mutation_grouped)
+			  
   myplot <- plotdf %>%
-    ggplot(aes(x=reorder_within(mutations, count, ori_primer), y=count)) +
-    #ggplot(aes(x=reorder_within(mutations, count, ori_probe), y=count)) +
-    geom_bar(aes(fill=alert), stat="identity", position="stack") +
-    geom_text(aes(label=mylabel), position = position_stack(vjust=0.5), size=2.5) +
-    facet_wrap(~ori_primer, scales="free") +
-    scale_fill_manual(values=names(mutation_colors), name="Alert status") +
-    theme_bw() +
-    scale_x_reordered() + 
-    scale_y_continuous(expand=c(0.08, 0.05)) +
-    ylab("Number of genomes") +
-    xlab("Mismatches in probe binding sites") +
-    theme(axis.text = element_text(size=7),
-          axis.title = element_text(size=8.5)) +
-    coord_flip()
+	ggplot(aes(x=reorder_within(mutations, count, ori_primer), y=count)) +
+	#ggplot(aes(x=reorder_within(mutations, count, ori_probe), y=count)) +
+	geom_bar(aes(fill=alert), stat="identity", position="stack") +
+	geom_text(aes(label=mylabel), position = position_stack(vjust=0.5), size=2.5) +
+	facet_wrap(~ori_primer, scales="free") +
+	scale_fill_manual(values=names(mutation_colors), name="Alert status") +
+	theme_bw() +
+	scale_x_reordered() + 
+	scale_y_continuous(expand=c(0.08, 0.05)) +
+	ylab("Number of genomes") +
+	xlab("Mismatches in probe binding sites") +
+	theme(axis.text = element_text(size=7),
+		  axis.title = element_text(size=8.5)) +
+	coord_flip()
   myplot
 }
 
@@ -357,27 +354,27 @@ plotprobe <- plot_grid(probeplot_grouped, probeplot_ind, nrow=2,
 
 # Alluvial plot of genome status
 primer_status <- primer_status %>%
-  mutate(key = paste0(genome, "_", ori_primer)) %>%
-  rename(status_primer = status) 
+	mutate(key = paste0(genome, "_", ori_primer)) %>%
+	rename(status_primer = status) 
 probe_status <- probe_status %>%
-  mutate(key = paste0(genome, "_", ori_primer)) %>%
-  select(-ori_primer, -genome) %>%
-  rename(status_probe = status)
+	mutate(key = paste0(genome, "_", ori_primer)) %>%
+	select(-ori_primer, -genome) %>%
+	rename(status_probe = status)
 status <- primer_status %>%
-  left_join(probe_status, by="key") %>%
-  select(-ori_probe) %>%
-  group_by(status_primer, status_probe, ori_primer) %>%
-  summarise(count=n())
+	left_join(probe_status, by="key") %>%
+	select(-ori_probe) %>%
+	group_by(status_primer, status_probe, ori_primer) %>%
+	summarise(count=n())
 
 
 alluvialplot <- ggplot(status, aes(axis1 = status_primer, axis2 = status_probe, y = count)) +
-  geom_alluvium(aes(fill = status_primer)) + 
-  geom_stratum(alpha=0.25) +
-  geom_text(stat = "stratum", aes(label = after_stat(stratum)), size=3, color="black") +
-  scale_x_discrete(limits = c("Primer status", "Probe status"), expand = c(0.15, 0.15)) +
-  facet_wrap(~ori_primer) +
-  theme_void() +
-  theme(
+	geom_alluvium(aes(fill = status_primer)) + 
+	geom_stratum(alpha=0.25) +
+	geom_text(stat = "stratum", aes(label = after_stat(stratum)), size=3, color="black") +
+	scale_x_discrete(limits = c("Primer status", "Probe status"), expand = c(0.15, 0.15)) +
+	facet_wrap(~ori_primer) +
+	theme_void() +
+	theme(
 	axis.text.x = element_text(angle = 0), 
 	axis.title.x = element_text(size = 8),  
 	axis.title.y = element_blank(),  

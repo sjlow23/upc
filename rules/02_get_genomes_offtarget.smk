@@ -20,14 +20,16 @@ checkpoint download_offtarget:
 		"""
 		if [[ {params.download_offtarget} == "yes" ]]
 		then
-			mkdir -p {params.metadir}
+			mkdir -p {params.metadir} {params.outdir}
 			if [[ {params.domain} == "viral" && {params.use_assembly} == "no" ]]
 			then
-				datasets download virus genome taxon {params.spid} --complete-only --filename offtarget.zip
-				dataformat tsv virus-genome --force --package offtarget.zip > {params.metadir}/metadata_offtarget.tsv
+				datasets download virus genome taxon {params.spid} \
+					--complete-only \
+					--filename {params.outdir}/offtarget.zip
+				dataformat tsv virus-genome --force --package {params.outdir}/offtarget.zip > {params.metadir}/metadata_offtarget.tsv
 
-				unzip offtarget.zip -d {params.offtargetdir}
-				rm offtarget.zip
+				unzip {params.outdir}/offtarget.zip -d {params.offtargetdir}
+				rm {params.outdir}/offtarget.zip
 
 				# Subsample to max specified offtarget sequences
 				if [[ {params.max_offtarget} != "no" ]]
@@ -49,11 +51,11 @@ checkpoint download_offtarget:
 				--assembly-level {params.assembly_level} \
 				--include genome \
 				--dehydrated \
-				--filename offtarget.zip
+				--filename {params.outdir}/offtarget.zip
 				
-				unzip offtarget.zip -d {params.offtargetdir}
+				unzip {params.outdir}/offtarget.zip -d {params.offtargetdir}
 
-				dataformat tsv genome --package offtarget.zip > {params.metadir}/metadata_offtarget_assembly.tsv
+				dataformat tsv genome --package {params.outdir}/offtarget.zip > {params.metadir}/metadata_offtarget_assembly.tsv
 				datasets summary virus genome taxon {params.spid} --as-json-lines | \
 					dataformat tsv virus-genome --fields accession,geo-location,geo-region,isolate-collection-date,host-common-name,host-name,virus-name \
 						> {params.metadir}/metadata_offtarget.tsv
@@ -67,7 +69,7 @@ checkpoint download_offtarget:
 
 				datasets rehydrate --directory {params.offtargetdir}
 				
-				rm offtarget.zip
+				rm {params.outdir}/offtarget.zip
 				mv {params.offtargetdir}/ncbi_dataset/data/GC?_*/*.fna {params.offtargetdir}/
 				rm -rf {params.offtargetdir}/ncbi_dataset {params.offtargetdir}/README.md
 

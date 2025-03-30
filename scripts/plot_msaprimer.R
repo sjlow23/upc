@@ -51,7 +51,7 @@ plot_msa <- function(myaln, myhighlightpos, myprimer, mystrand) {
 					char_width=0.5, 
 					color="Chemistry_NT", 
 					seq_name=T, 
-					border="white",
+					border="gray",
 					posHighligthed = myhighlightpos) + 
 		ggtitle(paste0(myprimer, ": ", mystrand)) +
 		theme(axis.text = element_text(size=15),

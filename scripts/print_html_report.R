@@ -8,42 +8,46 @@ library(kableExtra)
 
 args <- commandArgs(trailingOnly=TRUE)
 
+# Function to check if the file/plot is not empty 
+check_plot <- function(plotfile) {
+  if (file.size(plotfile) > 0) {
+	return(plotfile)
+  } else {
+	return(NULL)
+  }
+}
+
+check_file <- function(file) {
+  if (file.size(file) > 0) {
+	fread(file, header=T, sep="\t")
+  } else {
+	return(NULL)
+  }
+}
+
 primerlist <- fread(args[1], header=F, sep="\t")
 probelist <- fread(args[2], header=F, sep="\t")
-
-primer_mismatches <- fread(args[3], header=T, sep="\t")
-primer_missing <- fread(args[4], header=T, sep="\t")
-probe_mismatches <- fread(args[5], header=T, sep="\t")
-probe_missing <- fread(args[6], header=T, sep="\t")
-
-primer_combo_plot <- args[7]
-primer_mutation_plot <- args[8]
-probe_combo_plot <- args[9]
-probe_mutation_plot <- args[10]
-
+primer_mismatches <- check_file(args[3])
+primer_missing <- check_file(args[4])
+probe_mismatches <- check_file(args[5])
+probe_missing <- check_file(args[6])
+primer_combo_plot <- check_plot(args[7])
+primer_mutation_plot <- check_plot(args[8])
+probe_combo_plot <- check_plot(args[9])
+probe_mutation_plot <- check_plot(args[10])
 primer_pie <- args[11]
 probe_pie <- args[12]
 status_alluvial <- args[13]
-if (file.size(args[14]) > 0) {
-	primer_msa_plot <- args[14]
-} else {
-	primer_msa_plot <- NULL
-}
-
-if (file.size(args[15]) > 0) {
-	probe_msa_plot <- args[15]
-} else {
-	probe_msa_plot <- NULL
-}
-
+primer_msa_plot <- check_plot(args[14])
+probe_msa_plot <- check_plot(args[15])
 oriprimers <- fread(args[16], header=F, sep="\t")
 output_html <- args[17]
+
 
 names(primerlist) <- c("Primer original", "Primer derived", "Forward primer sequence (5' -> 3')", "Reverse primer sequence (5' -> 3')")
 names(probelist) <- c("Primer original", "Probe derived", "Probe sequence (5' -> 3')")
 probelist <- probelist %>%
 	relocate("Probe derived")
-
 
 
 # Find degenerate positions in primers and probes
@@ -121,6 +125,7 @@ highlight_degenerate <- function(sequence, positions) {
   return(paste0(chars, collapse = ""))
 }
 
+
 # Original primer table with highlighted degenerate positions
 oriprimers$fwd <- mapply(highlight_degenerate, oriprimers$fwd, oriprimers$fwd_degenerate)
 oriprimers$rev <- mapply(highlight_degenerate, oriprimers$rev, oriprimers$rev_degenerate)
@@ -167,39 +172,43 @@ highlight_mismatch <- function(binding_site, positions) {
 
 ########################################################################################################################
 # Apply the function to highlight text
-primer_mismatches$binding_site <- mapply(highlight_mismatch, primer_mismatches$binding_site, primer_mismatches$position)
-probe_mismatches$binding_site <- mapply(highlight_mismatch, probe_mismatches$binding_site, probe_mismatches$position)
+if (!is.null(primer_mismatches)) {
+	primer_mismatches$binding_site <- mapply(highlight_mismatch, primer_mismatches$binding_site, primer_mismatches$position)
+	
+	# Subset relevant columns if needed
+	primer_mismatches <- primer_mismatches %>%
+			select(ori_primer, primer_set, type, mutations, alert, binding_site, count_db_genomes,
+			count_genomes_amplified, perc_genomes_amplified, count_genomes_with_mutation, perc_with_mutation_amplified,
+			perc_with_mutation_total, genomes_with_mutation) %>%
+		rename(Primer = ori_primer,
+			`Primer derived` = primer_set,
+			Type = type,
+			"Mismatch(es)" = mutations,
+			Alert = alert,
+			"Primer binding site" = binding_site,
+			"Number of genomes in database" = count_db_genomes,
+			"Number of genomes amplified" = count_genomes_amplified,
+			"Percentage of genomes amplified" = perc_genomes_amplified,
+			"Number of genomes with >=1 mismatch(es)" = count_genomes_with_mutation,
+			"Percentage of genomes with >= 1 mismatch(es)" = perc_with_mutation_amplified,
+			"Percentage of genomes with mismatch(es) (of total in db)" = perc_with_mutation_total,
+			"Genome(s) with mismatch(es)" = genomes_with_mutation)
 
+	primer_mismatches_fwd <- primer_mismatches %>%
+		filter(Type == "Fwd") %>%
+		select(-Type) %>%
+		arrange(desc(`Percentage of genomes with >= 1 mismatch(es)`))
 
-# Subset relevant columns if needed
-primer_mismatches <- primer_mismatches %>%
-		select(ori_primer, primer_set, type, mutations, alert, binding_site, count_db_genomes,
-		count_genomes_amplified, perc_genomes_amplified, count_genomes_with_mutation, perc_with_mutation_amplified,
-		perc_with_mutation_total, genomes_with_mutation) %>%
-	rename(Primer = ori_primer,
-		`Primer derived` = primer_set,
-		Type = type,
-		"Mismatch(es)" = mutations,
-		Alert = alert,
-		"Primer binding site" = binding_site,
-		"Number of genomes in database" = count_db_genomes,
-		"Number of genomes amplified" = count_genomes_amplified,
-		"Percentage of genomes amplified" = perc_genomes_amplified,
-		"Number of genomes with >=1 mismatch(es)" = count_genomes_with_mutation,
-		"Percentage of genomes with >= 1 mismatch(es)" = perc_with_mutation_amplified,
-		"Percentage of genomes with mismatch(es) (of total in db)" = perc_with_mutation_total,
-		"Genome(s) with mismatch(es)" = genomes_with_mutation)
+	primer_mismatches_rev <- primer_mismatches %>%
+		filter(Type == "Rev") %>%
+		select(-Type) %>%
+		arrange(desc(`Percentage of genomes with >= 1 mismatch(es)`))
+}
 
-primer_mismatches_fwd <- primer_mismatches %>%
-	filter(Type == "Fwd") %>%
-	select(-Type) %>%
-	arrange(desc(`Percentage of genomes with >= 1 mismatch(es)`))
-primer_mismatches_rev <- primer_mismatches %>%
-	filter(Type == "Rev") %>%
-	select(-Type) %>%
-	arrange(desc(`Percentage of genomes with >= 1 mismatch(es)`))
+if (!is.null(probe_mismatches)) {
+	probe_mismatches$binding_site <- mapply(highlight_mismatch, probe_mismatches$binding_site, probe_mismatches$position)
 
-probe_mismatches <- probe_mismatches %>%
+	probe_mismatches <- probe_mismatches %>%
 	select(ori_probe, mutations, alert, binding_site, count_db_genomes, 
 		count_genomes_present, perc_genomes_present, count_genomes_with_mutation, perc_with_mutation_present, 
 		perc_with_mutation_total, genomes_with_mutation) %>%
@@ -215,26 +224,57 @@ probe_mismatches <- probe_mismatches %>%
 		"Percentage of genomes with mismatch(es) (of total in db)" = perc_with_mutation_total, 
 		"Genome(s) with mismatch(es)" = genomes_with_mutation) %>%
 	arrange(desc(`Percentage of genomes with >=1 mismatch(es)`))
+}
+
+
 
 ########################################################################################################################
 # Generate missing table
-primer_missing <- primer_missing %>%
+if (!is.null(primer_missing)) {
+	primer_missing <- primer_missing %>%
 	rename(Primer = ori_primer,
 			Type = type,
 			"Number of genomes amplified" = count_genomes_amplified,
 			"Number of genomes not amplified" = count_genomes_missing,
 			"Genome(s) not amplified" = genomes_missing)
+}
 
-probe_missing <- probe_missing %>%
+if (!is.null(probe_missing)) {
+	probe_missing <- probe_missing %>%
 	rename(Probe = ori_primer,
 			"Number of genomes with probe binding site" = count_genomes_present,
 			"Number of genomes without probe binding site" = count_genomes_missing,
 			"Genome(s) without probe binding site" = genomes_missing)
+}
+
 
 ########################################################################################################################
 # Create the table with kable and HTML formatting
-title_primer_fwd <- "<h5><strong>Table 3:</strong> Mismatches observed in the forward primer binding region</h5>"
-table_mismatch_primer_fwd_html <- kable(primer_mismatches_fwd, "html", escape = FALSE) %>%
+if (exists("primer_mismatches_fwd")) {
+	if (nrow(primer_mismatches_fwd) > 0) {
+		title_primer_fwd <- "<h5><strong>Table 3:</strong> Mismatches observed in the forward primer binding region</h5>"
+		table_mismatch_primer_fwd_html <- kable(primer_mismatches_fwd, "html", escape = FALSE) %>%
+		kable_styling(bootstrap_options = c("striped", "hover"), html_font = "Monospace") %>%
+		column_spec(1, width = "5em") %>%  
+		column_spec(2, width = "5em") %>%  
+		column_spec(3, width = "8em") %>%  
+		column_spec(4, width = "4em") %>%
+		column_spec(5, width = "10em") %>%  
+		column_spec(6, width = "4em") %>%  
+		column_spec(7, width = "4em") %>%
+		column_spec(8, width = "4em") %>%  
+		column_spec(9, width = "4em") %>%  
+		column_spec(10, width = "4em") %>%
+		column_spec(11, width = "4em") %>%  
+		column_spec(12, width = "30em") 
+	}
+}
+
+
+if (exists("primer_mismatches_rev")) {
+	if (nrow(primer_mismatches_rev) > 0) {
+	title_primer_rev <- "<h5><strong>Table 4:</strong> Mismatches observed in the reverse primer binding region</h5>"
+	table_mismatch_primer_rev_html <- kable(primer_mismatches_rev, "html", escape = FALSE) %>%
 	kable_styling(bootstrap_options = c("striped", "hover"), html_font = "Monospace") %>%
 	column_spec(1, width = "5em") %>%  
 	column_spec(2, width = "5em") %>%  
@@ -248,54 +288,46 @@ table_mismatch_primer_fwd_html <- kable(primer_mismatches_fwd, "html", escape = 
   	column_spec(10, width = "4em") %>%
 	column_spec(11, width = "4em") %>%  
   	column_spec(12, width = "30em") 
+	}
+}
 
-title_primer_rev <- "<h5><strong>Table 4:</strong> Mismatches observed in the reverse primer binding region</h5>"
-table_mismatch_primer_rev_html <- kable(primer_mismatches_rev, "html", escape = FALSE) %>%
-	kable_styling(bootstrap_options = c("striped", "hover"), html_font = "Monospace") %>%
-	column_spec(1, width = "5em") %>%  
-	column_spec(2, width = "5em") %>%  
-  	column_spec(3, width = "8em") %>%  
-  	column_spec(4, width = "4em") %>%
-	column_spec(5, width = "10em") %>%  
-  	column_spec(6, width = "4em") %>%  
-  	column_spec(7, width = "4em") %>%
-	column_spec(8, width = "4em") %>%  
-  	column_spec(9, width = "4em") %>%  
-  	column_spec(10, width = "4em") %>%
-	column_spec(11, width = "4em") %>%  
-  	column_spec(12, width = "30em") 
+if (!is.null(probe_mismatches)) {
+	title_probe <- "<h5><strong>Table 6:</strong> Mismatches observed in the probe binding region</h5>"
+	table_mismatch_probe_html <- kable(probe_mismatches, "html", escape = FALSE) %>%
+		kable_styling(bootstrap_options = c("striped", "hover"), html_font = "Monospace") %>%
+		column_spec(1, width = "5em") %>%  
+		column_spec(2, width = "8em") %>%  
+		column_spec(3, width = "4em") %>%
+		column_spec(4, width = "10em") %>%  
+		column_spec(5, width = "4em") %>%  
+		column_spec(6, width = "4em") %>%
+		column_spec(7, width = "4em") %>%  
+		column_spec(8, width = "4em") %>%  
+		column_spec(9, width = "4em") %>%
+		column_spec(10, width = "4em") %>%  
+		column_spec(11, width = "30em")
+}
 
-title_probe <- "<h5><strong>Table 6:</strong> Mismatches observed in the probe binding region</h5>"
-table_mismatch_probe_html <- kable(probe_mismatches, "html", escape = FALSE) %>%
-	kable_styling(bootstrap_options = c("striped", "hover"), html_font = "Monospace") %>%
-	column_spec(1, width = "5em") %>%  
-  	column_spec(2, width = "8em") %>%  
-  	column_spec(3, width = "4em") %>%
-	column_spec(4, width = "10em") %>%  
-  	column_spec(5, width = "4em") %>%  
-  	column_spec(6, width = "4em") %>%
-	column_spec(7, width = "4em") %>%  
-  	column_spec(8, width = "4em") %>%  
-  	column_spec(9, width = "4em") %>%
-	column_spec(10, width = "4em") %>%  
-  	column_spec(11, width = "30em") 
+if (!is.null(primer_missing)) {
+	title_primer_missing <- "<h5><strong>Table 7:</strong> Genomes not amplified by primers</h5>"
+	table_primer_missing <- kable(primer_missing, "html", escape = FALSE) %>%
+		kable_styling(bootstrap_options = c("striped", "hover"), html_font = "Monospace") %>%
+		column_spec(1, width = "5em") %>%  
+		column_spec(2, width = "3em") %>%  
+		column_spec(3, width = "5em") %>%
+		column_spec(4, width = "5em") %>%  
+		column_spec(5, width = "30em") 
+}
 
-title_primer_missing <- "<h5><strong>Table 7:</strong> Genomes not amplified by primers</h5>"
-table_primer_missing <- kable(primer_missing, "html", escape = FALSE) %>%
-	kable_styling(bootstrap_options = c("striped", "hover"), html_font = "Monospace") %>%
-	column_spec(1, width = "5em") %>%  
-  	column_spec(2, width = "3em") %>%  
-  	column_spec(3, width = "5em") %>%
-	column_spec(4, width = "5em") %>%  
-  	column_spec(5, width = "30em") 
-
-title_probe_missing <- "<h5><strong>Table 8:</strong> Genomes without probe binding sites</h5>"
-table_probe_missing <- kable(probe_missing, "html", escape = FALSE) %>%
-	kable_styling(bootstrap_options = c("striped", "hover"), html_font = "Monospace") %>%
-	column_spec(1, width = "5em") %>%  
-  	column_spec(2, width = "7em") %>%  
-	column_spec(3, width = "7em") %>%  
-  	column_spec(4, width = "20em")
+if (!is.null(probe_missing)) {
+	title_probe_missing <- "<h5><strong>Table 8:</strong> Genomes without probe binding sites</h5>"
+	table_probe_missing <- kable(probe_missing, "html", escape = FALSE) %>%
+		kable_styling(bootstrap_options = c("striped", "hover"), html_font = "Monospace") %>%
+		column_spec(1, width = "5em") %>%  
+		column_spec(2, width = "7em") %>%  
+		column_spec(3, width = "7em") %>%  
+		column_spec(4, width = "20em")
+}
 	
 
 ########################################################################################################################
@@ -306,29 +338,39 @@ primerpieplot <- paste("<img src='", basename(primer_pie), "' alt='Primer <i>in 
 probepieplot <- paste("<img src='", basename(probe_pie), "' alt='Probe <i>in silico</i> amplification results' width='650'>", 
 			   "<h5><strong>Figure 2:</strong> Probe <i>in silico</i> amplification results</h5>", sep = "")
 
-primercomboplot <- paste("<img src='", basename(primer_combo_plot), "' alt='Prevalence of mismatch combinations (primer)' width='1600'>", 
-			   			"<h5><strong>Figure 3:</strong> Prevalence of mismatch combinations (primer)</h5>", sep = "")
+if (!is.null(primer_combo_plot)) {
+	primercomboplot <- paste("<img src='", basename(primer_combo_plot), "' alt='Prevalence of mismatch combinations (primer)' width='1600'>", 
+							"<h5><strong>Figure 3:</strong> Prevalence of mismatch combinations (primer)</h5>", sep = "")
+}
 
-primermutationplot <- paste("<img src='", basename(primer_mutation_plot), "' alt='Proportion of genomes with mismatches in primer (individual positions)' width='1300'>", 
-							"<h5><strong>Figure 4:</strong> Proportion of genomes with mismatches in primer (individual positions)</h5>", sep = "")
+if (!is.null(primer_mutation_plot)) {
+	primermutationplot <- paste("<img src='", basename(primer_mutation_plot), "' alt='Proportion of genomes with mismatches in primer (individual positions)' width='1300'>", 
+								"<h5><strong>Figure 4:</strong> Proportion of genomes with mismatches in primer (individual positions)</h5>", sep = "")
+}
 
-probecomboplot <- paste("<img src='", basename(probe_combo_plot), "' alt='Prevalence of mismatch combinations (probe)' width='1600'>", 
-						"<h5><strong>Figure 5:</strong> Prevalence of mismatch combinations (probe)</h5>", sep = "")
+if (!is.null(probe_combo_plot)) {
+	probecomboplot <- paste("<img src='", basename(probe_combo_plot), "' alt='Prevalence of mismatch combinations (probe)' width='1600'>", 
+							"<h5><strong>Figure 5:</strong> Prevalence of mismatch combinations (probe)</h5>", sep = "")
+}
 
-probemutationplot <- paste("<img src='", basename(probe_mutation_plot), "' alt='Proportion of genomes with mismatches in probe (individual positions)' width='1300'>", 
-			   "<h5><strong>Figure 6:</strong> Proportion of genomes with mismatches in probe (individual positions)</h5>", sep = "")
+if (!is.null(probe_mutation_plot)) {
+	probemutationplot <- paste("<img src='", basename(probe_mutation_plot), "' alt='Proportion of genomes with mismatches in probe (individual positions)' width='1300'>", 
+				"<h5><strong>Figure 6:</strong> Proportion of genomes with mismatches in probe (individual positions)</h5>", sep = "")
+}
 
 alluvialplot <- paste("<img src='", basename(status_alluvial), "' alt='Genome status based on primer and probe binding' width='500'>", 
 			   "<h5><strong>Figure 7:</strong> Genome profiles of primer and probe binding sites</h5>", sep = "")
 
 if (!is.null(primer_msa_plot)) {
 	primermsaplot <- paste("<img src='", basename(primer_msa_plot), "' alt='MSA of primers' width='1200'>",
-				"<h5><strong>Figure 8:</strong> MSA of primers for non-amplified genome(s)</h5>", sep = "")
+				"<h5><strong>Figure 8:</strong> MSA of primers for non-amplified genome(s). Positions with at least one mismatch <br> 
+				to the reference genome are highlighted.</h5>", sep = "")
 }
 
 if (!is.null(probe_msa_plot)) {
 	probemsaplot <- paste("<img src='", basename(probe_msa_plot), "' alt='MSA of probes' width='600'>",
-				"<h5><strong>Figure 9:</strong> MSA of probes not found in genome(s)</h5>", sep = "")
+				"<h5><strong>Figure 9:</strong> MSA of probes not found in genome(s). Note: Plot may include probes that have perfect matches <br>
+				but were considered missing due to missing primer binding sites. Probe searches are only conducted within amplicons.</h5>", sep = "")
 }
 
 
@@ -361,33 +403,54 @@ table_probelist <- kable(probelist, "html", escape = FALSE) %>%
 	column_spec(4, width = "20em")
 
 
+# Construct combined HTML
+combined_html <- paste(
+	title_oriprimers, table_oriprimers, "<br>", "<br>",
+	title_primerlist, table_primerlist, "<br>", "<br>",
+	if (exists("title_primer_fwd")) paste(title_primer_fwd, table_mismatch_primer_fwd_html, "<br>", "<br>") else "",
+	if (exists("title_primer_rev")) paste(title_primer_rev, table_mismatch_primer_rev_html, "<br>", "<br>") else "",
+	if (exists("title_probelist")) paste(title_probelist, table_probelist, "<br>", "<br>") else "",
+	if (exists("title_probe")) paste(title_probe, table_mismatch_probe_html, "<br>", "<br>") else "",
+	if (exists("title_primer_missing")) paste(title_primer_missing, table_primer_missing, "<br>", "<br>") else "",
+	if (exists("title_probe_missing")) paste(title_probe_missing, table_probe_missing, "<br>", "<br>") else "",
+	primerpieplot, "<br>", "<br>",
+	probepieplot, "<br>", "<br>",
+	if (exists("primercomboplot")) paste(primercomboplot, "<br>", "<br>") else "",
+	if (exists("primermutationplot")) paste(primermutationplot, "<br>", "<br>") else "",
+	if (exists("probecomboplot")) paste(probecomboplot, "<br>", "<br>") else "",
+	if (exists("probemutationplot")) paste(probemutationplot, "<br>", "<br>") else "",
+	alluvialplot, "<br>", "<br>",
+	if (exists("primermsaplot")) paste(primermsaplot, "<br>", "<br>") else "",
+	if (exists("probemsaplot")) paste(probemsaplot, "<br>", "<br>") else "",
+	sep = "")
+
 # Combine tables with their titles and the plot
-combined_html <- paste(title_oriprimers, table_oriprimers, "<br>", "<br>",
-					   title_primerlist, table_primerlist, "<br>", "<br>",
-					   title_primer_fwd, table_mismatch_primer_fwd_html, "<br>", "<br>",
-					   title_primer_rev, table_mismatch_primer_rev_html, "<br>", "<br>",
-					   title_probelist, table_probelist, "<br>", "<br>",
-					   title_probe, table_mismatch_probe_html, "<br>", "<br>",
-					   title_primer_missing, table_primer_missing, "<br>", "<br>",
-					   title_probe_missing, table_probe_missing, "<br>", "<br>",
-					   primerpieplot, "<br>", "<br>",
-					   probepieplot, "<br>", "<br>",
-					   primercomboplot, "<br>", "<br>",
-					   primermutationplot, "<br>", "<br>",
-					   probecomboplot, "<br>", "<br>",
-					   probemutationplot, "<br>", "<br>",
-					   alluvialplot, "<br>", "<br>",
-					   #primermsaplot, "<br>", "<br>",
-					   #probemsaplot, "<br>", "<br>",
-					   sep = "")
+# combined_html <- paste(title_oriprimers, table_oriprimers, "<br>", "<br>",
+# 					   title_primerlist, table_primerlist, "<br>", "<br>",
+# 					   title_primer_fwd, table_mismatch_primer_fwd_html, "<br>", "<br>",
+# 					   title_primer_rev, table_mismatch_primer_rev_html, "<br>", "<br>",
+# 					   title_probelist, table_probelist, "<br>", "<br>",
+# 					   title_probe, table_mismatch_probe_html, "<br>", "<br>",
+# 					   title_primer_missing, table_primer_missing, "<br>", "<br>",
+# 					   title_probe_missing, table_probe_missing, "<br>", "<br>",
+# 					   primerpieplot, "<br>", "<br>",
+# 					   probepieplot, "<br>", "<br>",
+# 					   primercomboplot, "<br>", "<br>",
+# 					   primermutationplot, "<br>", "<br>",
+# 					   probecomboplot, "<br>", "<br>",
+# 					   probemutationplot, "<br>", "<br>",
+# 					   alluvialplot, "<br>", "<br>",
+# 					   #primermsaplot, "<br>", "<br>",
+# 					   #probemsaplot, "<br>", "<br>",
+# 					   sep = "")
 
 # Allow for optional MSA plot
-if (exists("primermsaplot")) {
-  combined_html <- paste(combined_html, primermsaplot, "<br>", "<br>", sep = "")
-}
-if (exists("probemsaplot")) {
-  combined_html <- paste(combined_html, probemsaplot, "<br>", "<br>", sep = "")
-}
+# if (exists("primermsaplot")) {
+#   combined_html <- paste(combined_html, primermsaplot, "<br>", "<br>", sep = "")
+# }
+# if (exists("probemsaplot")) {
+#   combined_html <- paste(combined_html, probemsaplot, "<br>", "<br>", sep = "")
+# }
 
 
 # Save the HTML file

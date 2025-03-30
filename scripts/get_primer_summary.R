@@ -56,20 +56,21 @@ primer_result.subset <- primer_result %>%
 
 # Per primerset ori and genome combo, number of mismatches, positions of mismatches, 
 # and actual mismatches
-summary_pergenome <- primer_result.subset %>% 
-	mutate(mismatch=case_when(mutation=="" ~ 0, TRUE ~ 1)) %>%
-	group_by(genome, ori_primer, primer_set, position, type) %>% 
-	filter(mismatch==min(mismatch)) %>%
-	filter(mismatch!=0) %>% 
-	ungroup() %>% 
-	group_by(genome, ori_primer, primer_set, primer_seq, type) %>% 
-	summarize(count_mismatches=n_distinct(mutation), 
-						positions=toString(unique(position)),
-						mutations=toString(unique(mutation)),
-						binding_sites=toString(unique(binding_site)))
-
-if (nrow(summary_pergenome) > 0) {
-	fwrite(summary_pergenome, file=output_pergenome, col.names=T, row.names=F, sep="\t", quote=F)
+if (nrow(primer_result.subset) >= 1) {
+	summary_pergenome <- primer_result.subset %>% 
+		mutate(mismatch=case_when(mutation=="" ~ 0, TRUE ~ 1)) %>%
+		group_by(genome, ori_primer, primer_set, position, type) %>% 
+		filter(mismatch==min(mismatch)) %>%
+		filter(mismatch!=0) %>% 
+		ungroup() %>% 
+		group_by(genome, ori_primer, primer_set, primer_seq, type) %>% 
+		summarize(count_mismatches=n_distinct(mutation), 
+							positions=toString(unique(position)),
+							mutations=toString(unique(mutation)),
+							binding_sites=toString(unique(binding_site)))
+	if (nrow(summary_pergenome) > 0) {
+		fwrite(summary_pergenome, file=output_pergenome, col.names=T, row.names=F, sep="\t", quote=F)
+	}
 } else {
 	file.create(output_pergenome)
 }
@@ -103,7 +104,8 @@ if (nrow(summary_missing) > 0) {
 # Medium: mutation at any of last 3 bases, OR at least 2 mutations
 # Low: mutation at any other location
 
-summary_permutation_combo <- summary_pergenome %>%
+if (exists("summary_pergenome")) {
+	summary_permutation_combo <- summary_pergenome %>%
 	select(-count_mismatches) %>%
 	group_by(ori_primer, primer_set, primer_seq, binding_sites, type, mutations) %>% 
 	summarize(count_genomes_with_mutation = n_distinct(genome), 
@@ -127,26 +129,18 @@ summary_permutation_combo <- summary_pergenome %>%
 	relocate(alert, .after = mutations) %>%
   	arrange(ori_primer, type)
 
-
-if (nrow(summary_permutation_combo) > 0) {
+	if (nrow(summary_permutation_combo) > 0) {
 	fwrite(summary_permutation_combo, file=output_permutation_combo, col.names=T, row.names=F, sep="\t", quote=F)
+	}
 } else {
 	file.create(output_permutation_combo)
 }
+	
 
 
 # Per primerset ori and position combo, mutations
-# summary_perprimer <- primer_result.subset %>% 
-# 	mutate(mismatch=case_when(mutation == "" ~ 0, TRUE ~ 1)) %>%
-# 	group_by(ori_primer, genome, position, type) %>% 
-# 	filter(mismatch == min(mismatch)) %>%
-# 	filter(mismatch != 0) %>% 
-# 	ungroup() %>%
-# 	group_by(ori_primer, primer_set, position, mutation, type) %>% 
-# 	summarize(genomes_with_mutation = toString(unique(genome)),
-# 						count_genomes_with_mutation = n_distinct(genome))
-
-summary_perprimer <- primer_result.subset %>% 
+if (nrow(primer_result.subset) > 0) {
+	summary_perprimer <- primer_result.subset %>% 
 	mutate(mismatch=case_when(mutation == "" ~ 0, TRUE ~ 1)) %>%
 	group_by(ori_primer, genome, position, type) %>% 
 	filter(mismatch == min(mismatch)) %>%
@@ -156,96 +150,113 @@ summary_perprimer <- primer_result.subset %>%
 	summarize(genomes_with_mutation = toString(unique(genome)),
 						count_genomes_with_mutation = n_distinct(genome))
 
-
-if (nrow(summary_perprimer) > 0) {
-	fwrite(summary_perprimer, file=output_perprimer, col.names=T, row.names=F, sep="\t", quote=F)
+	if (nrow(summary_perprimer) > 0) {
+		fwrite(summary_perprimer, file=output_perprimer, col.names=T, row.names=F, sep="\t", quote=F)
+	}
 } else {
 	file.create(output_perprimer)
 }
 
+
 # Per genome, number of fwd and rev mismatches
 # Can't add all possible combinations, as those that fail to amplify are not included in ori primers tsv
 # Stats is only for genomes that had amplification
-summary_pergenome_mismatches <- primer_result.subset %>% 
-	mutate(mismatch = case_when(mutation=="" ~ 0, TRUE ~ 1)) %>%
-	group_by(genome, ori_primer, position, type) %>% 
-	filter(mismatch == min(mismatch)) %>%
-	filter(mismatch != 0) %>% 
-	ungroup() %>% 
-	group_by(genome, ori_primer, primer_set, type) %>%
-	summarize(mismatches = n_distinct(position))
 
-if (nrow(summary_pergenome_mismatches) > 0) {
-	fwrite(summary_pergenome_mismatches, file=output_pergenome_mismatches, col.names=T, row.names=F, sep="\t", quote=F)
+if (nrow(primer_result.subset) > 0) {
+	summary_pergenome_mismatches <- primer_result.subset %>% 
+		mutate(mismatch = case_when(mutation=="" ~ 0, TRUE ~ 1)) %>%
+		group_by(genome, ori_primer, position, type) %>% 
+		filter(mismatch == min(mismatch)) %>%
+		filter(mismatch != 0) %>% 
+		ungroup() %>% 
+		group_by(genome, ori_primer, primer_set, type) %>%
+		summarize(mismatches = n_distinct(position))
+	if (nrow(summary_pergenome_mismatches) > 0) {
+		fwrite(summary_pergenome_mismatches, file=output_pergenome_mismatches, col.names=T, row.names=F, sep="\t", quote=F)
+	}
 } else {
 	file.create(output_pergenome_mismatches)
 }
 
 
 # Add in genomes with perfect matches
-present <- summary_pergenome_mismatches %>% 
-	select(genome, ori_primer, type) %>%
-	distinct()
-missing_combinations <- combinations %>% 
-	anti_join(present) %>%
-	mutate(key = paste(genome, ori_primer, sep="|"))
-
-# Join by key to get best primer set for perfect genomes
-missing_combinations <- missing_combinations %>%
-	left_join(select(best_match, key, primer_set), by="key") %>%
-	select(-key)
-
-## Check value vs character here
-summary_pergenome_mismatches <- bind_rows(summary_pergenome_mismatches, missing_combinations) %>%
-	replace(is.na(.), 0) %>%
-	pivot_wider(names_from="type", values_from="mismatches")
-
-if (nrow(summary_pergenome_mismatches) > 0) {
+if (nrow(primer_result.subset) >=1) {
+	present <- summary_pergenome_mismatches %>% 
+		select(genome, ori_primer, type) %>%
+		distinct()
+	missing_combinations <- combinations %>% 
+		anti_join(present) %>%
+		mutate(key = paste(genome, ori_primer, sep="|")) %>%
+		mutate_all(as.character)
+	# Join by key to get best primer set for perfect genomes
+	missing_combinations <- missing_combinations %>%
+		left_join(select(best_match, key, primer_set), by="key") %>%
+		select(-key)
+	summary_pergenome_mismatches <- bind_rows(summary_pergenome_mismatches, missing_combinations) %>%
+		mutate(mismatches = case_when(is.na(mismatches) ~ 0, TRUE ~ mismatches)) %>%
+		pivot_wider(names_from="type", values_from="mismatches") %>%
+		mutate(Fwd = case_when(is.na(Fwd) ~ 0, TRUE ~ Fwd),
+				Rev = case_when(is.na(Rev) ~ 0, TRUE ~ Rev))
 	fwrite(summary_pergenome_mismatches, file=output_grouped, col.names=T, row.names=F, sep="\t", quote=F)
 } else {
-	file.create(output_grouped)
+	# All primer perfect matches
+	summary_pergenome_mismatches <- combinations %>%
+		mutate(mismatches = 0) %>%
+		pivot_wider(names_from="type", values_from="mismatches")
+	fwrite(summary_pergenome_mismatches, file=output_grouped, col.names=T, row.names=F, sep="\t", quote=F)
 }
 
 
 # Summarise per genome status
-pergenome_status <- summary_pergenome_mismatches %>%
+if (nrow(primer_result.subset) >=1) {
+	pergenome_status <- summary_pergenome_mismatches %>%
 	mutate(sum_mismatches = Fwd + Rev) %>%
 	mutate(status = case_when(sum_mismatches == 0 ~ "Primer perfect match",
 							 sum_mismatches != 0 ~ "Primer with mismatch")) %>%
 	select(genome, status)
 
-# Unique primers
-uniq_primers <- unique(pergenome_status$ori_primer)
+	# Unique primers
+	uniq_primers <- unique(pergenome_status$ori_primer)
 
-# List to store missing genomes for each primer set
-missinglist <- list()
+	# List to store missing genomes for each primer set
+	missinglist <- list()
 
-for (primer in uniq_primers) {
-	present <- pergenome_status %>%
-		filter(ori_primer == primer) %>%
-		pull(genome)
-	missing <- setdiff(genomelist, present)
-	if (length(missing) != 0) {
-		missinglist[[primer]] <- data.frame(genome = missing, ori_primer = primer, status = "Not amplified")
+	for (primer in uniq_primers) {
+		present <- pergenome_status %>%
+			filter(ori_primer == primer) %>%
+			pull(genome)
+		missing <- setdiff(genomelist, present)
+		if (length(missing) != 0) {
+			missinglist[[primer]] <- data.frame(genome = missing, ori_primer = primer, status = "Not amplified")
+		}
 	}
-}
 
-missingdf <- bind_rows(missinglist)
-
-# Missing genomes for each primer set
-# missinggenomes <- genomelist[!genomelist %in% pergenome_status$genome]
-# missingdf <- data.frame(ori_primer=unique(pergenome_status$ori_primer), 
-# 						genome=missinggenomes, status="Not amplified")
-
-pergenome_status <- bind_rows(pergenome_status, missingdf) %>%
-	relocate(genome)
-
-
-if (nrow(pergenome_status) > 0) {
+	missingdf <- bind_rows(missinglist)
+	pergenome_status <- bind_rows(pergenome_status, missingdf) %>%
+		relocate(genome)
 	fwrite(pergenome_status, file=output_status, col.names=T, row.names=F, sep="\t", quote=F)
 } else {
-	file.create(output_status)
+	# All genomes perfect match
+	uniq_primers <- unique(combinations$ori_primer)
+	missinglist <- list()
+
+	for (primer in uniq_primers) {
+		missing <- setdiff(genomelist, unique(combinations$genome))
+		if (length(missing) != 0) {
+			missinglist[[primer]] <- data.frame(genome = missing, ori_primer = primer, status = "Not amplified")
+		}
+	}
+
+	missingdf <- bind_rows(missinglist)
+
+	pergenome_status <- combinations %>%
+		mutate(status = "Primer perfect match") %>%
+		select(-type)
+	pergenome_status <- bind_rows(pergenome_status, missingdf)
+	fwrite(pergenome_status, file=output_status, col.names=T, row.names=F, sep="\t", quote=F)
 }
+
+
 
 
 

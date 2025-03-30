@@ -14,13 +14,39 @@ library(wesanderson)
 
 args <- commandArgs(trailingOnly=TRUE)
 
+# Function to check if the file is not empty
+is_file_not_empty <- function(file_path) {
+	return(file.info(file_path)$size > 0)
+}
+
+# Read the files only if they are not empty
+if (is_file_not_empty(args[1])) {
+	primer_result <- fread(args[1], header=T, sep="\t")
+} 
+
+if (is_file_not_empty(args[2])) {
+	primer_mutations <- fread(args[2], header=T, sep="\t")
+} 
+
+if (is_file_not_empty(args[4])) {
+	probe_result <- fread(args[4], header=T, sep="\t")
+} 
+
+if (is_file_not_empty(args[5])) {
+	probe_mutations <- fread(args[5], header=T, sep="\t")
+} 
+
+if (is_file_not_empty(args[6])) {
+	probe_grouped <- fread(args[6], header=T, sep="\t")
+}
+
 # Read collated primer file
-primer_result <- fread(args[1], header=T, sep="\t")
-primer_mutations <- fread(args[2], header=T, sep="\t")
+#primer_result <- fread(args[1], header=T, sep="\t")
+#primer_mutations <- fread(args[2], header=T, sep="\t")
 primer_status <- fread(args[3], header=T, sep="\t")
-probe_result <- fread(args[4], header=T, sep="\t")
-probe_mutations <- fread(args[5], header=T, sep="\t")
-probe_grouped <- fread(args[6], header=T, sep="\t")
+#probe_result <- fread(args[4], header=T, sep="\t")
+#probe_mutations <- fread(args[5], header=T, sep="\t")
+#probe_grouped <- fread(args[6], header=T, sep="\t")
 probe_status <- fread(args[7], header=T, sep="\t")
 
 primeroutput <- args[8]
@@ -59,10 +85,15 @@ scale_x_reordered <- function(..., sep = "___") {
 }
 
 # Make unique primer name column
-primer_result <- primer_result %>%
-  mutate(primer = paste0(ori_primer, "_", type))
-primer_mutations <- primer_mutations %>%
-  mutate(primer = paste0(ori_primer, "_", type))
+if (exists("primer_result")) {
+	primer_result <- primer_result %>%
+	mutate(primer = paste0(ori_primer, "_", type))
+}
+
+if (exists("primer_mutations")) {
+	primer_mutations <- primer_mutations %>%
+	mutate(primer = paste0(ori_primer, "_", type))
+}
 
 
 ## Grouped primer mutations
@@ -120,7 +151,9 @@ plot_mutations_primers <- function(mydf) {
   myplot
 }
 
-primerplot_grouped <- plot_mutations_primers(primer_result)
+if (exists("primer_result")) {
+	primerplot_grouped <- plot_mutations_primers(primer_result)
+}
 
 
 ## Individual primer mutations
@@ -198,7 +231,9 @@ plot_individual_primer_mutations <- function(mydf) {
 	myplot
 }
 
-primerplot_ind <- plot_individual_primer_mutations(primer_mutations)
+if (exists("primer_mutations")) {
+	primerplot_ind <- plot_individual_primer_mutations(primer_mutations)
+}
 
 
 ## Grouped probe mutations
@@ -257,7 +292,10 @@ plot_mutations_probes <- function(mydf) {
   myplot
 }
 
-probeplot_grouped <- plot_mutations_probes(probe_result)
+if (exists("probe_result")) {
+	probeplot_grouped <- plot_mutations_probes(probe_result)
+}
+
   
   
 
@@ -340,16 +378,19 @@ plot_individual_probe_mutations <- function(mydf) {
   myplot
 }
 
+if (exists("probe_mutations")) {
+	probeplot_ind <- plot_individual_probe_mutations(probe_mutations)
+}
 
-probeplot_ind <- plot_individual_probe_mutations(probe_mutations)
-
-
-plotprimer <- plot_grid(primerplot_grouped, primerplot_ind, nrow=2, 
+if (exists("primer_result")) {
+	plotprimer <- plot_grid(primerplot_grouped, primerplot_ind, nrow=2, 
 			rel_heights=c(0.65, 0.35), labels=c("a", "b"))
+}
 
-plotprobe <- plot_grid(probeplot_grouped, probeplot_ind, nrow=2, 
-			rel_heights=c(0.6, 0.4), labels=c("a", "b"))
-
+if (exists("probe_result")) {
+	plotprobe <- plot_grid(probeplot_grouped, probeplot_ind, nrow=2, 
+				rel_heights=c(0.6, 0.4), labels=c("a", "b"))
+} 
 
 
 # Alluvial plot of genome status
@@ -382,11 +423,26 @@ alluvialplot <- ggplot(status, aes(axis1 = status_primer, axis2 = status_probe, 
 	panel.grid = element_blank(),  
 	legend.position = "none") 
 
-ggsave(primeroutput, plotprimer, width=12, height=12)
-ggsave(probeoutput, plotprobe, width=12, height=10)
 
-ggsave(primer_combo_plot, primerplot_grouped, width=12, height=9)
-ggsave(primer_mutation_plot, primerplot_ind, width=12, height=5)
-ggsave(probe_combo_plot, probeplot_grouped, width=12, height=9)
-ggsave(probe_mutation_plot, probeplot_ind, width=12, height=5)
+if (exists("plotprimer")) {
+	ggsave(primeroutput, plotprimer, width=12, height=12)
+	ggsave(primer_combo_plot, primerplot_grouped, width=12, height=9)
+	ggsave(primer_mutation_plot, primerplot_ind, width=12, height=5)
+} else {
+	file.create(primeroutput)
+	file.create(primer_combo_plot)
+	file.create(primer_mutation_plot)
+}
+
+if (exists("plotprobe")) {
+	ggsave(probeoutput, plotprobe, width=12, height=10)
+	ggsave(probe_combo_plot, probeplot_grouped, width=12, height=9)
+	ggsave(probe_mutation_plot, probeplot_ind, width=12, height=5)
+} else {
+	file.create(probeoutput)
+	file.create(probe_combo_plot)
+	file.create(probe_mutation_plot)
+}
+
+
 ggsave(alluvial_plot, alluvialplot, width=4, height=7, bg="white")

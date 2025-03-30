@@ -26,8 +26,7 @@ if [[ "$mode" == "primer" ]]; then
 				awk -F "\t" '$4 == 0 && $5 == 0' | \
 				sort -k2,3 | \
 				head -n1 | \
-				cut -f1,3 | \
-				sort | uniq > "$alndir"/keep_"$primer"_perfect.txt
+				cut -f1,3 > "$alndir"/keep_"$primer"_perfect.txt
 			
 			primerset=$(cut -f2 "$alndir"/keep_"$primer"_perfect.txt | head -n1)
 
@@ -47,8 +46,8 @@ if [[ "$mode" == "primer" ]]; then
 			mafft --thread $thread "$alndir"/check_"$primer".fasta > "$alndir"/check_"$primer".aln
 
 			# Locate primer sequences in alignment
-			fwd_coord=$(seqkit locate -i -p "$fwd_primer" "$alndir"/check_"$primer".aln | cut -f5-6 | grep -v start | sort | uniq | head -1 | sed 's/\t/:/g') 
-			rev_coord=$(seqkit locate -i -p "$rev_primer" "$alndir"/check_"$primer".aln | cut -f5-6 | grep -v start | sort | uniq | head -1 | sed 's/\t/:/g')
+			fwd_coord=$(seqkit seq --upper-case "$alndir"/check_"$primer".aln | seqkit locate -i -p "$fwd_primer" | cut -f5-6 | grep -v start | sort | uniq | head -1 | sed 's/\t/:/g') 
+			rev_coord=$(seqkit seq --upper-case "$alndir"/check_"$primer".aln | seqkit locate -i -p "$rev_primer" | cut -f5-6 | grep -v start | sort | uniq | head -1 | sed 's/\t/:/g')
 
 			cat "$alndir"/check_"$primer".aln | seqkit subseq -r $fwd_coord > "$alndir"/check_"$primer"_fwd.fasta
 			cat "$alndir"/check_"$primer".aln | seqkit subseq -r $rev_coord | seqkit seq --reverse --complement > "$alndir"/check_"$primer"_rev.fasta
@@ -64,10 +63,12 @@ if [[ "$mode" == "primer" ]]; then
 			magick convert "$alndir"/"$primer"_fwd.png  -bordercolor white -border 250x0 "$alndir"/"$primer"_rev.png +append "$alndir"/"$primer".png
 
 			# Clean up temporary files
-			rm "$alndir"/keep_"$primer".txt "$alndir"/keep_"$primer"_perfect.txt 
-			rm "$alndir"/"$primer"_fwd.png "$alndir"/"$primer"_rev.png
-			rm "$alndir"/check_"$primer"_fwd.fasta "$alndir"/check_"$primer"_rev.fasta
+			#rm "$alndir"/keep_"$primer".txt "$alndir"/keep_"$primer"_perfect.txt 
+			#rm "$alndir"/"$primer"_fwd.png "$alndir"/"$primer"_rev.png
+			#rm "$alndir"/check_"$primer"_fwd.fasta "$alndir"/check_"$primer"_rev.fasta
 
+		else
+			continue
 		fi
 	done < $querylist
 fi
@@ -85,12 +86,7 @@ if [[ "$mode" == "probe" ]]; then
 		if [[ -s "$alndir"/probe_"$probe".txt ]]; then
 
 			# Get perfect genomes from same probe set
-			grep -w "$probe" $grouped | \
-				awk -F "\t" '$4 == 0' | \
-				sort -k2 | \
-				head -n1 | \
-				cut -f1,2 | \
-				sort | uniq > "$alndir"/probe_"$probe"_perfect.txt
+			grep -w "$probe" $grouped | sort -nk4 -k2 | head -1 | cut -f1-2 > "$alndir"/probe_"$probe"_perfect.txt
 			
 			probeset=$(cut -f2 "$alndir"/probe_"$probe"_perfect.txt | head -n1)
 
@@ -109,7 +105,7 @@ if [[ "$mode" == "probe" ]]; then
 			mafft --thread $thread "$alndir"/probe_"$probe".fasta > "$alndir"/probe_"$probe".aln
 
 			# Locate probe in alignment
-			probe_coord=$(seqkit locate -i -p "$probeseq" "$alndir"/probe_"$probe".aln | cut -f5-6 | grep -v start | sort | uniq | head -1 | sed 's/\t/:/g') 
+			probe_coord=$(seqkit seq --upper-case "$alndir"/probe_"$probe".aln | seqkit locate -i -p "$probeseq" | cut -f5-6 | grep -v start | sort | uniq | head -1 | sed 's/\t/:/g') 
 			
 			cat "$alndir"/probe_"$probe".aln | seqkit subseq -r $probe_coord > "$alndir"/probe_"$probe".fasta
 			
@@ -121,7 +117,6 @@ if [[ "$mode" == "probe" ]]; then
 
 			# Clean up temporary files
 			rm "$alndir"/probe_"$probe".txt "$alndir"/probe_"$probe"_perfect.txt 
-			rm "$alndir"/probe_"$probe".fasta
 
 		fi
 	done < $querylist

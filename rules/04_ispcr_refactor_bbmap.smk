@@ -154,7 +154,8 @@ checkpoint missing_samples:
 		grep ">" {params.ispcrdir}/target_amplicons.fasta | sed 's/:/\\t/1' | sed 's/>//g' | awk '{{ print $1, $3 }}' OFS="\\t" | sort | uniq | sort -k2,2 > {params.resultdir}/hits.txt
 
 		#Get ori primer
-		join -t $'\t' -1 2 -2 2 -e NA -o 1.1,1.2,2.1 {params.resultdir}/hits.txt {params.outdir}/primers_expand.txt > {params.resultdir}/hits2.txt
+		sort -k2,2 {params.outdir}/primers_expand.txt > {params.outdir}/primers_expand.sorted.txt
+		join -t $'\t' -1 2 -2 2 -e NA -o 1.1,1.2,2.1 {params.resultdir}/hits.txt {params.outdir}/primers_expand.sorted.txt > {params.resultdir}/hits2.txt
 		mv {params.resultdir}/hits2.txt {params.resultdir}/hits.txt
 
 		if [[ {params.subsample} == "no" ]]
@@ -164,7 +165,7 @@ checkpoint missing_samples:
 			genomelist="{params.outdir}/target_genomes_subsampled.txt"
 		fi
 
-		for primer in `cut -f1 {params.outdir}/primers_expand.txt | sort | uniq`; do 
+		for primer in `cut -f1 {params.outdir}/primers_expand.sorted.txt | sort | uniq`; do 
 			touch {params.resultdir}/"$primer".txt
 			if grep -qw "$primer" {params.resultdir}/hits.txt; then
 				grep -w "$primer" {params.resultdir}/hits.txt | cut -f1 | sort | uniq | awk '{{ print $0".fna" }}' >> {params.resultdir}/"$primer".txt
@@ -175,6 +176,7 @@ checkpoint missing_samples:
 			sed -i 's/.fna//g' {params.resultdir}/"$primer".missing  
 			#fi
 		done	 
+		rm {params.outdir}/primers_expand.sorted.txt
 		"""
 
 rule agg_missing_samples:
@@ -233,15 +235,19 @@ rule get_missing_amplicons:
 			fi
 		done < {params.outdir}/primerlist.txt
 
-		# Merge fasta from all primers
-		cat {params.resultdir}/*_merged.fna > {params.resultdir}/merged.fasta
+		if [[ $(find {params.primerdir} -type f -name "*.missing" -not -empty | wc -l) -gt 0 ]]; then
+			# Merge fasta from all primers
+			cat {params.resultdir}/*_merged.fna > {params.resultdir}/merged.fasta
 
-		# Keep only amplicons of expected size
-		seqkit seq --max-len {params.max_size} {params.resultdir}/merged.fasta > {output.amplicons}
+			# Keep only amplicons of expected size
+			seqkit seq --max-len {params.max_size} {params.resultdir}/merged.fasta > {output.amplicons}
 
-		rm {params.resultdir}/merged.fasta {params.outdir}/primerlist.txt
+			rm {params.resultdir}/merged.fasta {params.outdir}/primerlist.txt
+		else
+			touch {output.amplicons}
+		fi
+
 		rm -rf {params.primerdir}
-
 		touch {output.status}	
 		"""
 

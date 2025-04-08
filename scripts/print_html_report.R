@@ -78,7 +78,7 @@ find_degenerate_positions <- function(df, column_name) {
 	
 	# Check each character in the sequence
 	for (j in seq_along(strsplit(sequence, NULL)[[1]])) {
-	  char <- toupper(substr(sequence, j, j))  # Convert to uppercase and get character
+	  char <- toupper(substr(sequence, j, j))  
 	  # If the character is not in the allowed set, record its position (1-based index)
 	  if (!(char %in% allowed_characters)) {
 		degenerate_positions <- c(degenerate_positions, j)
@@ -113,28 +113,37 @@ probelist <- probelist %>%
 	select(`Probe derived`, `Primer original`, `Probe sequence (5' -> 3')`, probe_degenerate)
 
 
+
 # Function to highlight degenerate positions
-highlight_degenerate <- function(sequence, positions) {
+highlight_degenerate <- function(sequence, positions, mytype) {
+    if (mytype == "Fwd") {
+		bg_color <- "#FF7f7f"  # Light red for forward primer
+	} else if (mytype == "Rev") {
+		bg_color <- "#90D5FF"  # Light blue for reverse primer
+	} else {
+		bg_color <- "#DAB1DA"  # Light purple for probe
+	}
+
   pos <- as.numeric(strsplit(positions, ",")[[1]])
   chars <- strsplit(sequence, "")[[1]]
   
   # Loop through and highlight text
   for (p in pos) {
-	chars[p] <- paste0("<span style='background-color:rgb(172, 255, 127); color: black;'>", chars[p], "</span>")
+	chars[p] <- paste0("<span style='background-color: ", bg_color, "; color: black;'>", chars[p], "</span>")
   }
   return(paste0(chars, collapse = ""))
 }
 
 
 # Original primer table with highlighted degenerate positions
-oriprimers$fwd <- mapply(highlight_degenerate, oriprimers$fwd, oriprimers$fwd_degenerate)
-oriprimers$rev <- mapply(highlight_degenerate, oriprimers$rev, oriprimers$rev_degenerate)
+oriprimers$fwd <- mapply(highlight_degenerate, oriprimers$fwd, oriprimers$fwd_degenerate, "Fwd")
+oriprimers$rev <- mapply(highlight_degenerate, oriprimers$rev, oriprimers$rev_degenerate, "Rev")
 oriprimers <- oriprimers %>%
 	rename(`Forward primer sequence (5' -> 3')` = fwd,
 			`Reverse primer sequence (5' -> 3')` = rev)
 
 if (probepresent == "yes") {
-	oriprimers$probe <- mapply(highlight_degenerate, oriprimers$probe, oriprimers$probe_degenerate)
+	oriprimers$probe <- mapply(highlight_degenerate, oriprimers$probe, oriprimers$probe_degenerate, "Probe")
 	oriprimers <- oriprimers %>%
 		rename(`Probe sequence (5' -> 3')` = probe)
 }
@@ -143,10 +152,10 @@ oriprimers <- oriprimers %>%
 	select(-ends_with("degenerate"))
 
 # Highlight degenerate positions in derived primer and probe lists
-primerlist$`Forward primer sequence (5' -> 3')` <- mapply(highlight_degenerate, primerlist$`Forward primer sequence (5' -> 3')`, primerlist$fwd_degenerate)
-primerlist$`Reverse primer sequence (5' -> 3')` <- mapply(highlight_degenerate, primerlist$`Reverse primer sequence (5' -> 3')`, primerlist$rev_degenerate)
+primerlist$`Forward primer sequence (5' -> 3')` <- mapply(highlight_degenerate, primerlist$`Forward primer sequence (5' -> 3')`, primerlist$fwd_degenerate, "Fwd")
+primerlist$`Reverse primer sequence (5' -> 3')` <- mapply(highlight_degenerate, primerlist$`Reverse primer sequence (5' -> 3')`, primerlist$rev_degenerate, "Rev")
 if (probepresent == "yes") {
-	probelist$`Probe sequence (5' -> 3')` <- mapply(highlight_degenerate, probelist$`Probe sequence (5' -> 3')`, probelist$probe_degenerate)
+	probelist$`Probe sequence (5' -> 3')` <- mapply(highlight_degenerate, probelist$`Probe sequence (5' -> 3')`, probelist$probe_degenerate, "Probe")
 }
 
 primerlist <- primerlist %>% 
@@ -387,7 +396,7 @@ if (!is.null(probe_msa_plot)) {
 
 ########################################################################################################################
 # Supplementary
-title_oriprimers <- "<h5><strong>Table 1:</strong> Original list of primers</h5>"
+title_oriprimers <- "<h5><strong>Table 1:</strong> Original list of primers. Degenerate positions are highlighted where present.</h5>"
 table_oriprimers <- kable(oriprimers, "html", escape = FALSE) %>%
 	kable_styling(bootstrap_options = c("striped", "hover"), html_font = "Monospace") %>%
 	column_spec(1, width = "5em") %>%  
@@ -395,7 +404,7 @@ table_oriprimers <- kable(oriprimers, "html", escape = FALSE) %>%
   	column_spec(3, width = "5em") %>%
 	column_spec(4, width = "20em")
 
-title_primerlist <- "<h5><strong>Table 2:</strong> List of primers evaluated</h5>"
+title_primerlist <- "<h5><strong>Table 2:</strong> List of primers evaluated. Degenerate positions are highlighted where present.</h5>"
 table_primerlist <- kable(primerlist, "html", escape = FALSE) %>%
 	kable_styling(bootstrap_options = c("striped", "hover"), html_font = "Monospace") %>%
 	column_spec(1, width = "5em") %>%  
@@ -405,7 +414,7 @@ table_primerlist <- kable(primerlist, "html", escape = FALSE) %>%
   	column_spec(5, width = "5em") %>%
 	column_spec(6, width = "30em")
 
-title_probelist <- "<h5><strong>Table 5:</strong> List of probes evaluated</h5>"
+title_probelist <- "<h5><strong>Table 5:</strong> List of probes evaluated. Degenerate positions are highlighted where present.</h5>"
 table_probelist <- kable(probelist, "html", escape = FALSE) %>%
 	kable_styling(bootstrap_options = c("striped", "hover"), html_font = "Monospace") %>%
 	column_spec(1, width = "5em") %>%  

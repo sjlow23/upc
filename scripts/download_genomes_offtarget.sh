@@ -28,9 +28,9 @@ then
 	if [[ "$max_offtarget" != "no" ]]
 	then
 		cat "$offtargetdir"/ncbi_dataset/data/genomic.fna | \
-			seqkit sample -n "$subsample" -o "$outdir"/genomic.fna
-			seqkit split --by-id --by-id-prefix "" -O "$offtargetdir" "$outdir"/genomic.fna
-			rm "$outdir"/genomic.fna
+			seqkit sample -n "$max_offtarget" -o "$offtargetdir"/genomic.fna
+			seqkit split --by-id --by-id-prefix "" -O "$offtargetdir" "$offtargetdir"/genomic.fna
+			rm "$offtargetdir"/genomic.fna
 			ls "$offtargetdir"/*.fna | awk -F "/" '{ print $NF }' > "$outdir"/offtarget_genomes_subsampled.txt
 	else
 		seqkit split --by-id --by-id-prefix "" -O "$offtargetdir" "$offtargetdir"/ncbi_dataset/data/genomic.fna
@@ -43,7 +43,7 @@ then
 	cat "$metadir"/metadata_offtarget.tsv | \
 		awk -F "\t" '{ print $1 }' | \
 		grep -v Accession | \
-		awk -F "_" '{ print $1"_"$2".fna" }' | \
+		awk -F "\t" '{ print $1".fna" }' | \
 		sort | uniq > "$outdir"/offtarget_genomes.txt
 fi
 

@@ -30,9 +30,9 @@ then
 	then
 		cat "$targetdir"/ncbi_dataset/data/genomic.fna | \
 			seqkit seq --min-len "$min_genome_size" | \
-			seqkit sample -n "$subsample" -o "$outdir"/genomic.fna
-			seqkit split --by-id --by-id-prefix "" -O "$targetdir" "$outdir"/genomic.fna
-			rm "$outdir"/genomic.fna
+			seqkit sample -n "$max_target" -o "$targetdir"/genomic.fna
+			seqkit split --by-id --by-id-prefix "" -O "$targetdir" "$targetdir"/genomic.fna
+			rm "$targetdir"/genomic.fna
 			ls "$targetdir"/*.fna | awk -F "/" '{ print $NF }' > "$outdir"/target_genomes_subsampled.txt
 	else
 		seqkit split --by-id --by-id-prefix "" -O "$targetdir" "$targetdir"/ncbi_dataset/data/genomic.fna
@@ -43,17 +43,17 @@ then
 
 	# Remove genomes smaller than min genome size
 	for genome in $targetdir/*.fna; do
-		if [[ `seqkit stats $genome | tail -1 | awk '{{ print $7 }}' | sed 's/,//g'` -lt "$min_genome_size" ]]
+		if [[ `seqkit stats $genome | tail -1 | awk '{ print $7 }' | sed 's/,//g'` -lt "$min_genome_size" ]]
 		then
 			rm $genome
 		fi
 	done
 
 	# Generate target genome list
-	awk -F "\t" '$27 >= "'$min_genome_size'"' "$metadir"/metadata_target.tsv | \
+	awk -F "\t" '$27 >= '"$min_genome_size"'' "$metadir"/metadata_target.tsv | \
 		cut -f1 | \
 		grep -v Accession | \
-		awk -F "_" '{ print $1"_"$2".fna" }' | \
+		awk -F "\t" '{ print $1".fna" }' | \
 		sort | uniq > "$outdir"/target_genomes.txt
 fi
 

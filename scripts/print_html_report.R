@@ -50,8 +50,7 @@ probelist <- probelist %>%
 	relocate("Probe derived")
 
 
-# Find degenerate positions in primers and probes
-
+# Check if the original primers file has a probe column
 if (ncol(oriprimers) == 4) {
 	names(oriprimers) <- c("primer", "fwd", "rev", "probe")
 	probepresent <- "yes"
@@ -61,6 +60,7 @@ if (ncol(oriprimers) == 4) {
 }
 
 
+# Find degenerate positions in primers and probes
 find_degenerate_positions <- function(df, column_name) {
   # Define the allowed characters set (A, C, G, T), case-insensitive
   allowed_characters <- c("A", "C", "G", "T")
@@ -158,13 +158,20 @@ probelist <- probelist %>%
 
 
 # Function to highlight characters in the binding_site column
-highlight_mismatch <- function(binding_site, positions) {
+highlight_mismatch <- function(binding_site, positions, mytype) {
+	if (mytype == "Fwd") {
+		bg_color <- "#FF7f7f"  # Light red for forward primer
+	} else if (mytype == "Rev") {
+		bg_color <- "#90D5FF"  # Light blue for reverse primer
+	} else {
+		bg_color <- "#DAB1DA"  # Light purple for probe
+	}
 	pos <- as.numeric(strsplit(positions, ",")[[1]])
 	chars <- strsplit(binding_site, "")[[1]]
 
 	# Loop through and highlight text
 	for (p in pos) {
-		chars[p] <- paste0("<span style='background-color: #FF7f7f; color: black;'>", chars[p], "</span>")
+		chars[p] <- paste0("<span style='background-color: ", bg_color, "; color: black;'>", chars[p], "</span>")
 	}
 	return(paste0(chars, collapse = ""))
 }
@@ -173,7 +180,10 @@ highlight_mismatch <- function(binding_site, positions) {
 ########################################################################################################################
 # Apply the function to highlight text
 if (!is.null(primer_mismatches)) {
-	primer_mismatches$binding_site <- mapply(highlight_mismatch, primer_mismatches$binding_site, primer_mismatches$position)
+	primer_mismatches$binding_site <- mapply(highlight_mismatch, 
+										primer_mismatches$binding_site, 
+										primer_mismatches$position,
+										primer_mismatches$type)
 	
 	# Subset relevant columns if needed
 	primer_mismatches <- primer_mismatches %>%
@@ -206,7 +216,10 @@ if (!is.null(primer_mismatches)) {
 }
 
 if (!is.null(probe_mismatches)) {
-	probe_mismatches$binding_site <- mapply(highlight_mismatch, probe_mismatches$binding_site, probe_mismatches$position)
+	probe_mismatches$binding_site <- mapply(highlight_mismatch, 
+										probe_mismatches$binding_site, 
+										probe_mismatches$position,
+										probe_mismatches$type)
 
 	probe_mismatches <- probe_mismatches %>%
 	select(ori_probe, mutations, alert, binding_site, count_db_genomes, 
@@ -252,7 +265,7 @@ if (!is.null(probe_missing)) {
 # Create the table with kable and HTML formatting
 if (exists("primer_mismatches_fwd")) {
 	if (nrow(primer_mismatches_fwd) > 0) {
-		title_primer_fwd <- "<h5><strong>Table 3:</strong> Mismatches observed in the forward primer binding region</h5>"
+		title_primer_fwd <- "<h5><strong>Table 3:</strong> Mismatches observed in the forward primer binding region (highlighted in red)</h5>"
 		table_mismatch_primer_fwd_html <- kable(primer_mismatches_fwd, "html", escape = FALSE) %>%
 		kable_styling(bootstrap_options = c("striped", "hover"), html_font = "Monospace") %>%
 		column_spec(1, width = "5em") %>%  
@@ -273,7 +286,7 @@ if (exists("primer_mismatches_fwd")) {
 
 if (exists("primer_mismatches_rev")) {
 	if (nrow(primer_mismatches_rev) > 0) {
-	title_primer_rev <- "<h5><strong>Table 4:</strong> Mismatches observed in the reverse primer binding region</h5>"
+	title_primer_rev <- "<h5><strong>Table 4:</strong> Mismatches observed in the reverse primer binding region (highlighted in blue)</h5>"
 	table_mismatch_primer_rev_html <- kable(primer_mismatches_rev, "html", escape = FALSE) %>%
 	kable_styling(bootstrap_options = c("striped", "hover"), html_font = "Monospace") %>%
 	column_spec(1, width = "5em") %>%  
@@ -292,7 +305,7 @@ if (exists("primer_mismatches_rev")) {
 }
 
 if (!is.null(probe_mismatches)) {
-	title_probe <- "<h5><strong>Table 6:</strong> Mismatches observed in the probe binding region</h5>"
+	title_probe <- "<h5><strong>Table 6:</strong> Mismatches observed in the probe binding region (highlighted in purple)</h5>"
 	table_mismatch_probe_html <- kable(probe_mismatches, "html", escape = FALSE) %>%
 		kable_styling(bootstrap_options = c("striped", "hover"), html_font = "Monospace") %>%
 		column_spec(1, width = "5em") %>%  
@@ -363,14 +376,12 @@ alluvialplot <- paste("<img src='", basename(status_alluvial), "' alt='Genome st
 
 if (!is.null(primer_msa_plot)) {
 	primermsaplot <- paste("<img src='", basename(primer_msa_plot), "' alt='MSA of primers' width='1200'>",
-				"<h5><strong>Figure 8:</strong> MSA of primers for non-amplified genome(s). Positions with at least one mismatch <br> 
-				to the reference genome are highlighted.</h5>", sep = "")
+				"<h5><strong>Figure 8:</strong> MSA of primers for non-amplified genome(s). Positions with at least one mismatch to the reference genome are highlighted.</h5>", sep = "")
 }
 
 if (!is.null(probe_msa_plot)) {
 	probemsaplot <- paste("<img src='", basename(probe_msa_plot), "' alt='MSA of probes' width='600'>",
-				"<h5><strong>Figure 9:</strong> MSA of probes not found in genome(s). Note: Plot may include probes that have perfect matches <br>
-				but were considered missing due to missing primer binding sites. Probe searches are only conducted within amplicons.</h5>", sep = "")
+				"<h5><strong>Figure 9:</strong> MSA of probes not found in genome(s). <br> Note: Plot may include probes that have perfect matches but were considered missing due to missing primer binding sites. <br> Probe searches are only conducted within amplicons, i.e. successfully amplified genomes.</h5>", sep = "")
 }
 
 

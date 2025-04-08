@@ -63,9 +63,9 @@ if [[ "$mode" == "primer" ]]; then
 			magick convert "$alndir"/"$primer"_fwd.png  -bordercolor white -border 250x0 "$alndir"/"$primer"_rev.png +append "$alndir"/"$primer".png
 
 			# Clean up temporary files
-			#rm "$alndir"/keep_"$primer".txt "$alndir"/keep_"$primer"_perfect.txt 
-			#rm "$alndir"/"$primer"_fwd.png "$alndir"/"$primer"_rev.png
-			#rm "$alndir"/check_"$primer"_fwd.fasta "$alndir"/check_"$primer"_rev.fasta
+			rm "$alndir"/keep_"$primer".txt "$alndir"/keep_"$primer"_perfect.txt 
+			rm "$alndir"/"$primer"_fwd.png "$alndir"/"$primer"_rev.png
+			rm "$alndir"/check_"$primer"_fwd.fasta "$alndir"/check_"$primer"_rev.fasta
 
 		else
 			continue

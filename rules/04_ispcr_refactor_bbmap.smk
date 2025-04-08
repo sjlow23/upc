@@ -30,14 +30,22 @@ checkpoint remove_overlaps:
 		outdir = OUTDIR,
 		newdir = GENOMES_OFFTARGET,
 		offtargetdir = GENOMES_OFFTARGET_TMP,
+		subsample_offtarget = SUBSAMPLE_OFFTARGET,
 		target = OUTDIR + "target_genomes.txt",
+		offtarget_subsampled = OUTDIR + "offtarget_genomes_subsampled.txt",
 		offtarget = OUTDIR + "offtarget_genomes.txt"
 	shell:
 		"""
 		mkdir -p {params.newdir}
 
-		if grep -wF -f {params.offtarget} {params.target}; then
-			grep -wF -f {params.offtarget} {params.target} > {params.outdir}/remove
+		if [[ {params.subsample_offtarget} == "no" ]]; then
+			offtargetfile={params.offtarget}
+		else
+			offtargetfile={params.offtarget_subsampled}
+		fi 
+
+		if grep -wF -f $offtargetfile {params.target}; then
+			grep -wF -f $offtargetfile {params.target} > {params.outdir}/remove
 			for i in `cat {params.outdir}/remove`; do rm {params.offtargetdir}/"$i"; done
 			rm {params.outdir}/remove
 		fi

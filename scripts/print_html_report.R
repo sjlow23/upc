@@ -423,6 +423,38 @@ table_probelist <- kable(probelist, "html", escape = FALSE) %>%
 	column_spec(4, width = "20em")
 
 
+# Table with output details
+# Create the data frame from the markdown table
+Output <- c("Table 1", "Table 2", "Table 3", "Table 4", "Table 5", "Table 6", "Table 7", "Table 8", 
+            "Figure 1", "Figure 2", "Figure 3", "Figure 4", "Figure 5", "Figure 6", "Figure 7", 
+            "Figure 8", "Figure 9")
+
+Details <- c("Original list of primers (and probes) provided to be evaluated. Degenerate primer and probe positions are highlighted.",
+             "All possible combinations of forward and reverse primers derived from Table 1.",
+             "All observed combinations of mismatches observed in the forward primer binding sites, ordered by decreasing prevalence. Mismatches in primer binding sites are highlighted in red. Number of genomes in database refer to original number of target genomes evaluated. Number of genomes amplified refer to genomes successfully amplified _in silico_. Number of genomes with >=1 mismatches refer to count of genomes with at least one mismatch. List of genomes with observed mismatches are listed in the last column.",
+             "All observed combinations of mismatches observed in the reverse primer binding sites, ordered by decreasing prevalence. Mismatches in primer binding sites are highlighted in blue. Other values are as in Table 3.",
+             "All probes derived from Table 1 that were evaluated.",
+             "All observed combinations of mismatches observed in the probe binding sites, ordered by decreasing prevalence. Number of genomes with probe binding site refer to number of amplicons successfully amplified that contain the probe binding site. Other values are as in Tables 3 & 4.",
+             "List of genomes that were not amplified in silico by the primers.",
+             "List of genomes with amplicons that did not contain the probe binding site.",
+             "Profiles of primer in silico amplification results.",
+             "Profiles of probe in silico amplification results.",
+             "Prevalence of mismatch combinations observed in forward and reverse primer binding sites. Similar to data in Tables 3 and 4.",
+             "Proportion of genomes with mismatches in the forward and reverse primer binding sites at individual positions.",
+             "Prevalence of mismatch combinations observed in probe binding sites. Similar to data in Table 6.",
+             "Proportion of genomes with mismatches in the probe binding sites at individual positions.",
+             "Alluvial plot of genome profiles (in silico matches) for primers and probes.",
+             "For genomes where in silico amplification failed, the mismatches observed at the supposed primer binding sites based on multiple sequence alignment with a 'successfully amplified' genome.",
+             "For genomes where probe binding sites were not present, the mismatches observed at the supposed probe binding sites based on multiple sequence alignment with a genome containing the probe binding site. Note: genomes with perfect matches to the probes may sometimes be present and still shown in figure. This would be due to a genome that failed in silico amplification but still contained the probe binding site.")
+
+# Create the data frame
+output_details <- data.frame(Output = Output, Details = Details)
+output_table <- kable(output_details, "html", escape = FALSE) %>%
+    kable_styling(bootstrap_options = c("striped", "hover"), html_font = "Monospace") %>%
+    column_spec(1, width = "4em") %>%  
+  	column_spec(2, width = "30em")
+title_outputtable <- "<h5><strong>Supplementary Table:</strong> Additional details of tables and figures. Some tables or figures may not be relevant for certain datasets.</h5>"
+
 # Construct combined HTML
 combined_html <- paste(
 	title_oriprimers, table_oriprimers, "<br>", "<br>",
@@ -442,6 +474,7 @@ combined_html <- paste(
 	alluvialplot, "<br>", "<br>",
 	if (exists("primermsaplot")) paste(primermsaplot, "<br>", "<br>") else "",
 	if (exists("probemsaplot")) paste(probemsaplot, "<br>", "<br>") else "",
+    title_outputtable, output_table, "<br>", "<br>",
 	sep = "")
 
 # Combine tables with their titles and the plot
@@ -475,3 +508,5 @@ combined_html <- paste(
 
 # Save the HTML file
 save_kable(combined_html, file = output_html)
+
+

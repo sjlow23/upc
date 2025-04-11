@@ -1,0 +1,50 @@
+# Required parameters
+params:
+  OUTDIR: "upc_denv1/"
+  PRIMERS: "input/primers_denv1.txt"
+  CPU: 48
+  SUBSAMPLE_TARGET: "no" #either max #genomes to keep or "no"
+  SUBSAMPLE_OFFTARGET: 10
+  PROBES: "yes"       #are there probes to be evaluated?
+  MIN_GENOME_SIZE: 9000
+
+
+# Provide custom genomes
+custom:
+  USER_TARGET: 
+  USER_OFFTARGET: 
+
+# download:
+#   DOWNLOAD_TARGET: "yes"
+#   DOWNLOAD_OFFTARGET: "yes"
+
+# Genome download parameters (leave empty if providing custom genomes)
+datasets:
+  DB: "GenBank"
+  TARGET_SP_TAXID: 11053
+  OFFTARGET_SP_TAXID: 12637
+  #TARGET_TAXID: ""
+  #OFFTARGET_TAXID: ""
+  DOMAIN: "viral"
+  ASSEMBLY_LEVEL: "complete" #chromosome,complete,scaffold,contig
+  USE_ASSEMBLY: "no"
+  #IS_FLU: "no"
+
+
+# Insilico PCR parameters
+ispcr:
+  MAX_AMPLICON_SIZE: 300
+  MIN_PERFECT: 10  # minimum size of perfect match at 3' end of primer (default 15)
+  TILE_SIZE: 11   # the size of match that triggers an alignment (default 11)
+  STEP_SIZE: 5    # spacing between tiles (default 5)
+  MIN_GOOD: 15    # minimum size where there must be 2 matches for each mismatch (default 15)
+
+amplicon:
+  MAX_MISMATCHES: 10
+
+probe:
+  MAX_MISMATCHES: 3
+  
+# Phylogeny parameters
+phylo:
+  DEREP: "yes"

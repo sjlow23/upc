@@ -3,8 +3,9 @@
 ## About UPC
 
 ## Introduction
+UPC is a Snakemake workflow for evaluating the inclusivity (and exclusivity TBC) of primers and probes designed for diagnostic purposes. Given an input file containing primer and probe sequences, and information about the target (and non-target) taxa, UPC performs *in silico* PCR against the specified taxa, and generates a report containing important statistics for each primer and probe set. UPC is useful for the continuous evaluation of pre-designed primers and probes against the ever-expanding sequence databases to ensure they are still relevant against extant sequences. This is especially relevant for assays which have been designed prior to the next-generation sequencing era, to ensure that the maximum sequence diversity is captured.
 
-This is a Snakemake workflow for evaluating pre-designed diagnostic primers (and probes) against a comprehensive database of genomes (NCBI).
+UPC can accept degenerate primer sequences defined using IUPAC codes. It expects a tab-delimited file containing primer names and sequences (forward and reverse) at the very minimum. Inclusion of probe sequences is optional. Other run parameters, including NCBI taxids are specified in the config file. Users can provide their own curated set of target and non-target genome sequences for evaluation. By default, genomes are downloaded from NCBI GenBank. 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

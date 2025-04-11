@@ -274,7 +274,7 @@ if (!is.null(probe_missing)) {
 # Create the table with kable and HTML formatting
 if (exists("primer_mismatches_fwd")) {
 	if (nrow(primer_mismatches_fwd) > 0) {
-		title_primer_fwd <- "<h5><strong>Table 3:</strong> Mismatches observed in the forward primer binding region (highlighted in red)</h5>"
+		title_primer_fwd <- "<h5><strong>Table 3:</strong> Mismatches observed in the forward primer binding region (highlighted in red). All observed differences are noted as 'Low Alert' except where differences occur in the last 3 bases are predicted to have an impact (Medium Alert), with a difference at the last base preventing amplification (High Alert). Primer binding regions with more than two differences are noted as 'Medium Alert'.</h5>"
 		table_mismatch_primer_fwd_html <- kable(primer_mismatches_fwd, "html", escape = FALSE) %>%
 		kable_styling(bootstrap_options = c("striped", "hover"), html_font = "Monospace") %>%
 		column_spec(1, width = "5em") %>%  
@@ -295,7 +295,7 @@ if (exists("primer_mismatches_fwd")) {
 
 if (exists("primer_mismatches_rev")) {
 	if (nrow(primer_mismatches_rev) > 0) {
-	title_primer_rev <- "<h5><strong>Table 4:</strong> Mismatches observed in the reverse primer binding region (highlighted in blue)</h5>"
+	title_primer_rev <- "<h5><strong>Table 4:</strong> Mismatches observed in the reverse primer binding region (highlighted in blue). All observed differences are noted as 'Low Alert' except where differences occur in the last 3 bases are predicted to have an impact (Medium Alert), with a difference at the last base preventing amplification (High Alert). Primer binding regions with more than two differences are noted as 'Medium Alert'.</h5>"
 	table_mismatch_primer_rev_html <- kable(primer_mismatches_rev, "html", escape = FALSE) %>%
 	kable_styling(bootstrap_options = c("striped", "hover"), html_font = "Monospace") %>%
 	column_spec(1, width = "5em") %>%  
@@ -314,7 +314,7 @@ if (exists("primer_mismatches_rev")) {
 }
 
 if (!is.null(probe_mismatches)) {
-	title_probe <- "<h5><strong>Table 6:</strong> Mismatches observed in the probe binding region (highlighted in purple)</h5>"
+	title_probe <- "<h5><strong>Table 6:</strong> Mismatches observed in the probe binding region (highlighted in purple). All observed differences are noted as 'Low Alert' except where there are more than two differences in the probe binding region (Medium Alert).</h5>"
 	table_mismatch_probe_html <- kable(probe_mismatches, "html", escape = FALSE) %>%
 		kable_styling(bootstrap_options = c("striped", "hover"), html_font = "Monospace") %>%
 		column_spec(1, width = "5em") %>%  
@@ -331,7 +331,7 @@ if (!is.null(probe_mismatches)) {
 }
 
 if (!is.null(primer_missing)) {
-	title_primer_missing <- "<h5><strong>Table 7:</strong> Genomes not amplified by primers</h5>"
+	title_primer_missing <- "<h5><strong>Table 7:</strong> Genomes without in silico amplification.</h5>"
 	table_primer_missing <- kable(primer_missing, "html", escape = FALSE) %>%
 		kable_styling(bootstrap_options = c("striped", "hover"), html_font = "Monospace") %>%
 		column_spec(1, width = "5em") %>%  
@@ -342,7 +342,7 @@ if (!is.null(primer_missing)) {
 }
 
 if (!is.null(probe_missing)) {
-	title_probe_missing <- "<h5><strong>Table 8:</strong> Genomes without probe binding sites</h5>"
+	title_probe_missing <- "<h5><strong>Table 8:</strong> Genomes without probe binding sites.</h5>"
 	table_probe_missing <- kable(probe_missing, "html", escape = FALSE) %>%
 		kable_styling(bootstrap_options = c("striped", "hover"), html_font = "Monospace") %>%
 		column_spec(1, width = "5em") %>%  
@@ -355,33 +355,33 @@ if (!is.null(probe_missing)) {
 ########################################################################################################################
 # Embed plots into the HTML
 primerpieplot <- paste("<img src='", basename(primer_pie), "' alt='Primer <i>in silico</i> amplification results' width='650'>", 
-			   "<h5><strong>Figure 1:</strong> Primer <i>in silico</i> amplification results</h5>", sep = "")
+			   "<h5><strong>Figure 1:</strong> Primer <i>in silico</i> amplification results.</h5>", sep = "")
 
 probepieplot <- paste("<img src='", basename(probe_pie), "' alt='Probe <i>in silico</i> amplification results' width='650'>", 
-			   "<h5><strong>Figure 2:</strong> Probe <i>in silico</i> amplification results</h5>", sep = "")
+			   "<h5><strong>Figure 2:</strong> Probe <i>in silico</i> amplification results.</h5>", sep = "")
 
 if (!is.null(primer_combo_plot)) {
 	primercomboplot <- paste("<img src='", basename(primer_combo_plot), "' alt='Prevalence of mismatch combinations (primer)' width='1600'>", 
-							"<h5><strong>Figure 3:</strong> Prevalence of mismatch combinations (primer)</h5>", sep = "")
+							"<h5><strong>Figure 3:</strong> Prevalence of mismatch combinations (primer).</h5>", sep = "")
 }
 
 if (!is.null(primer_mutation_plot)) {
 	primermutationplot <- paste("<img src='", basename(primer_mutation_plot), "' alt='Proportion of genomes with mismatches in primer (individual positions)' width='1300'>", 
-								"<h5><strong>Figure 4:</strong> Proportion of genomes with mismatches in primer (individual positions)</h5>", sep = "")
+								"<h5><strong>Figure 4:</strong> Proportion of genomes with mismatches in primer (individual positions).</h5>", sep = "")
 }
 
 if (!is.null(probe_combo_plot)) {
 	probecomboplot <- paste("<img src='", basename(probe_combo_plot), "' alt='Prevalence of mismatch combinations (probe)' width='1600'>", 
-							"<h5><strong>Figure 5:</strong> Prevalence of mismatch combinations (probe)</h5>", sep = "")
+							"<h5><strong>Figure 5:</strong> Prevalence of mismatch combinations (probe).</h5>", sep = "")
 }
 
 if (!is.null(probe_mutation_plot)) {
 	probemutationplot <- paste("<img src='", basename(probe_mutation_plot), "' alt='Proportion of genomes with mismatches in probe (individual positions)' width='1300'>", 
-				"<h5><strong>Figure 6:</strong> Proportion of genomes with mismatches in probe (individual positions)</h5>", sep = "")
+				"<h5><strong>Figure 6:</strong> Proportion of genomes with mismatches in probe (individual positions).</h5>", sep = "")
 }
 
 alluvialplot <- paste("<img src='", basename(status_alluvial), "' alt='Genome status based on primer and probe binding' width='500'>", 
-			   "<h5><strong>Figure 7:</strong> Genome profiles of primer and probe binding sites</h5>", sep = "")
+			   "<h5><strong>Figure 7:</strong> Genome profiles of primer and probe binding sites.</h5>", sep = "")
 
 if (!is.null(primer_msa_plot)) {
 	primermsaplot <- paste("<img src='", basename(primer_msa_plot), "' alt='MSA of primers' width='1200'>",
@@ -390,7 +390,7 @@ if (!is.null(primer_msa_plot)) {
 
 if (!is.null(probe_msa_plot)) {
 	probemsaplot <- paste("<img src='", basename(probe_msa_plot), "' alt='MSA of probes' width='600'>",
-				"<h5><strong>Figure 9:</strong> MSA of probes not found in genome(s). <br> Note: Plot may include probes that have perfect matches but were considered missing due to missing primer binding sites. <br> Probe searches are only conducted within amplicons, i.e. successfully amplified genomes.</h5>", sep = "")
+				"<h5><strong>Figure 9:</strong> MSA of probes not found in genome(s). Note: Plot may include probes that have perfect matches but were considered missing due to missing primer binding sites. Probe searches are only conducted within amplicons, i.e. genomes with successful amplification.</h5>", sep = "")
 }
 
 

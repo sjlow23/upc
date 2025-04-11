@@ -11,7 +11,7 @@ This is a Snakemake workflow for evaluating pre-designed diagnostic primers (and
 <a name="installation-top"></a>
 ## Installation
 
-1. Make sure you have [Mamba](https://github.com/conda-forge/miniforge) and [Snakemake] (https://snakemake.readthedocs.io/en/stable/getting_started/installation.html) installed.
+1. Make sure you have [Mamba](https://github.com/conda-forge/miniforge) and [Snakemake](https://snakemake.readthedocs.io/en/stable/getting_started/installation.html) installed.
 
 2. Clone the repo into your working directory
    ```sh

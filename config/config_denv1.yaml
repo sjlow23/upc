@@ -6,7 +6,8 @@ params:
   SUBSAMPLE_TARGET: "no" #either max #genomes to keep or "no"
   SUBSAMPLE_OFFTARGET: 10
   PROBES: "yes"       #are there probes to be evaluated?
-  MIN_GENOME_SIZE: 9000
+  MIN_GENOME_SIZE: 9000   #minimum target genome size for inclusion in evaluation (usually near complete length). this is to prevent short fragments from being analyzed, which may sometimes be erroneously downloaded
+
 
 
 # Provide custom genomes

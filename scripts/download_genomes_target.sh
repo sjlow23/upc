@@ -94,13 +94,13 @@ then
 	datasets rehydrate --directory "$targetdir"
 	rm "$outdir"/target.zip
 		
-	for i in "$targetdir"/ncbi_dataset/data/GC?_*/sequence_report.jsonl; do dataformat tsv genome-seq --inputfile $i | \
-		awk -F "\\t" '{ print $7, $1 }' OFS="\\t" | \
-		grep -v Accession >> "$outdir"/assembly_accession.tmp; done
-	sort -k1b,1 "$outdir"/assembly_accession.tmp > "$outdir"/assembly_accession.txt
+	# for i in "$targetdir"/ncbi_dataset/data/GC?_*/sequence_report.jsonl; do dataformat tsv genome-seq --inputfile $i | \
+	# 	awk -F "\\t" '{ print $7, $1 }' OFS="\\t" | \
+	# 	grep -v Accession >> "$outdir"/assembly_accession.tmp; done
+	# sort -k1b,1 "$outdir"/assembly_accession.tmp > "$outdir"/assembly_accession.txt
 
 	mv "$targetdir"/ncbi_dataset/data/GC?_*/*.fna "$targetdir"/
-	rm -rf "$targetdir"/ncbi_dataset "$targetdir"/README.md "$outdir"/assembly_accession.tmp
+	rm -rf "$targetdir"/ncbi_dataset "$targetdir"/README.md #"$outdir"/assembly_accession.tmp
 
 	find "$targetdir" -type f -name 'GC*.fna' -exec bash -c 'mv "$1" "$(dirname "$1")/$(basename "$1" | cut -d"_" -f1,2).fna"' _ {} \;
 
@@ -115,6 +115,16 @@ then
 	then
 		for genome in "$targetdir"/*.fna; do basename "$genome" >> "$outdir"/target_genomes_subsampled.txt; done
 	fi
+
+	# Make lookup file for assembly and nt accessions
+	for genome in "$targetdir"/*.fna; do
+		while read -r line; do
+			header=$(echo "$line" | awk '{print $1}' | sed 's/^>//')
+			echo -e "$header\t$(basename "$genome")" >> "$outdir"/target_assembly_accession.txt.tmp
+		done < <(grep "^>" "$genome")
+	done
+	sort -k1,1 "$outdir"/target_assembly_accession.txt.tmp | sed 's/.fna//g' > "$outdir"/target_assembly_accession.txt
+	rm "$outdir"/target_assembly_accession.txt.tmp
 
 fi	
 

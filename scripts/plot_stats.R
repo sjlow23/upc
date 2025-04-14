@@ -411,13 +411,13 @@ status <- primer_status %>%
 alluvialplot <- ggplot(status, aes(axis1 = status_primer, axis2 = status_probe, y = count)) +
 	geom_alluvium(aes(fill = status_primer)) + 
 	geom_stratum(alpha=0.25) +
-	geom_text(stat = "stratum", aes(label = after_stat(stratum)), size=3, color="black") +
-	scale_x_discrete(limits = c("Primer status", "Probe status"), expand = c(0.15, 0.15)) +
+	geom_text(stat = "stratum", aes(label = after_stat(stratum)), size=2, color="black") +
+	scale_x_discrete(limits = c("Primer status", "Probe status"), expand = c(0.25, 0.25)) +
 	facet_wrap(~ori_primer) +
 	theme_void() +
 	theme(
 	axis.text.x = element_text(angle = 0), 
-	axis.title.x = element_text(size = 8),  
+	axis.title.x = element_text(size = 6),  
 	axis.title.y = element_blank(),  
 	strip.text = element_text(size = 8),  
 	panel.grid = element_blank(),  

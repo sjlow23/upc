@@ -85,7 +85,7 @@ then
 	rm "$outdir"/offtarget.zip
 
 	mv "$offtargetdir"/ncbi_dataset/data/GC?_*/*.fna "$offtargetdir"/
-	rm -rf "$offtargetdir"/ncbi_dataset "$offtargetdir"/README.md "$outdir"/assembly_accession.tmp
+	rm -rf "$offtargetdir"/ncbi_dataset "$offtargetdir"/README.md #"$outdir"/assembly_accession.tmp
 
 	find "$offtargetdir" -type f -name 'GC*.fna' -exec bash -c 'mv "$1" "$(dirname "$1")/$(basename "$1" | cut -d"_" -f1,2).fna"' _ {} \;
 
@@ -93,6 +93,16 @@ then
 	then
 		for genome in "$offtargetdir"/*.fna; do basename "$genome" >> "$outdir"/offtarget_genomes_subsampled.txt; done
 	fi
+
+	# Make lookup file for assembly and nt accessions
+	for genome in "$offtargetdir"/*.fna; do
+		while read -r line; do
+			header=$(echo "$line" | awk '{print $1}' | sed 's/^>//')
+			echo -e "$header\t$(basename "$genome")" >> "$outdir"/offtarget_assembly_accession.txt.tmp
+		done < <(grep "^>" "$genome")
+	done
+	sort -k1,1 "$outdir"/offtarget_assembly_accession.txt.tmp | sed 's/.fna//g' > "$outdir"/offtarget_assembly_accession.txt
+	rm "$outdir"/offtarget_assembly_accession.txt.tmp
 
 fi	
 

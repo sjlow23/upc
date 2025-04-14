@@ -155,11 +155,23 @@ checkpoint missing_samples:
 		ispcrdir = OUTDIR + "ispcr_target",
 		ampdir = OUTDIR + "ispcr_target/amplicons",
 		resultdir = OUTDIR + "target_nohits",
+		use_assembly = USE_ASSEMBLY,
 		subsample = SUBSAMPLE_TARGET,
 	shell:
 		"""
 		mkdir -p {output.outdir}
 		grep ">" {params.ispcrdir}/target_amplicons.fasta | sed 's/:/\\t/1' | sed 's/>//g' | awk '{{ print $1, $3 }}' OFS="\\t" | sort | uniq | sort -k2,2 > {params.resultdir}/hits.txt
+
+		# Link assembly to nt accession
+		if [[ {params.use_assembly} == "yes" ]]
+		then
+			sort -k1,1 {params.resultdir}/hits.txt > {params.resultdir}/hits.txt.sorted
+			 join -t $'\t' -1 1 -2 1 {params.resultdir}/hits.txt.sorted {params.outdir}/target_assembly_accession.txt | \
+			 	awk '{{ print $3, $2 }}' OFS="\t" | \
+                sort -k2,2 > {params.resultdir}/hits_acc.txt
+				mv {params.resultdir}/hits_acc.txt {params.resultdir}/hits.txt
+				rm {params.resultdir}/hits.txt.sorted
+		fi
 
 		#Get ori primer
 		sort -k2,2 {params.outdir}/primers_expand.txt > {params.outdir}/primers_expand.sorted.txt
@@ -212,7 +224,7 @@ rule get_missing_amplicons:
 		resultdir = OUTDIR + "bbmap_amplicons/",
 		#max_mismatch = MAX_MISMATCH,
 		targetdir = GENOMES_TARGET,
-		max_size = 200,
+		max_size = MAX_AMPLICON_SIZE,
 	conda: "../envs/align.yaml"
 	threads: CPU
 	shell:
@@ -238,8 +250,12 @@ rule get_missing_amplicons:
 
 				cat {params.primerdir}/"$primer".missing | awk '{{ print "./scripts/extract_amplicon_collapsed.sh", $0, "'$mytargetdir'", "'$myresultdir'", "'$myprimerdir'", "'$myprimer'", "'$myprimerexpand'" }}' > {params.resultdir}/run.sh
 				cat {params.resultdir}/run.sh | parallel -j {threads}
-				cat {params.resultdir}/*_amp.fasta > {params.resultdir}/"$primer"_merged.fna
-				rm {params.resultdir}/*_amp.fasta {params.resultdir}/input.txt {params.resultdir}/run.sh
+
+                if [[ -s {params.resultdir}/*_"$primer"_amp.fasta ]]; then
+				    cat {params.resultdir}/*_amp.fasta > {params.resultdir}/"$primer"_merged.fna
+                    rm {params.resultdir}/*_amp.fasta
+                fi
+				rm {params.resultdir}/input.txt {params.resultdir}/run.sh
 			fi
 		done < {params.outdir}/primerlist.txt
 

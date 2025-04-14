@@ -18,6 +18,7 @@ checkpoint split_amplicons_target:
 		
 		"""
 
+
 checkpoint split_amplicons_offtarget:
 	input:
 		infile = rules.collate_ispcr_offtarget.output.status,
@@ -113,16 +114,25 @@ rule merge_duplicates_target:
 		full = OUTDIR + "ispcr_target/primer_alignments/{primer}.tsv",
 		aln = OUTDIR + "ispcr_target/primer_alignments/{primer}_all.aln",
 	params:
+		outdir = OUTDIR,
 		lookup = OUTDIR + "ispcr_target/duplicates_target.tab",
+		use_assembly = USE_ASSEMBLY
 	conda: "../envs/primer_mismatch.yaml"
 	shell:
 		"""
-		if [[ -s {params.lookup} ]]; then 
-			Rscript scripts/merge_duplicates.R {params.lookup} {input.aln} {output.full}
-			awk -F "," '{{ print ">"$1, $3, $4, $5, $6, "\\n"$7 }}' {output.full} > {output.aln}
+		if [[ {params.use_assembly} == "yes" ]]
+		then
+			lookup={params.outdir}/target_assembly_accession.txt
 		else
-			Rscript scripts/merge_duplicates.R NULL {input.aln} {output.full}
-			awk -F "," '{{ print ">"$1, $3, $4, $5, $6, "\\n"$7 }}' {output.full} > {output.aln}
+			lookup=NULL
+		fi
+
+		if [[ -s {params.lookup} ]]; then 
+			Rscript scripts/merge_duplicates.R {params.lookup} {input.aln} {output.full} $lookup
+			awk -F "," '{{ print ">"$1, $2, $3, $4, $5, "\\n"$6 }}' {output.full} > {output.aln}
+		else
+			Rscript scripts/merge_duplicates.R NULL {input.aln} {output.full} $lookup
+			awk -F "," '{{ print ">"$1, $2, $3, $4, $5, "\\n"$6 }}' {output.full} > {output.aln}
 		fi
 		"""
 
@@ -134,16 +144,25 @@ rule merge_duplicates_offtarget:
 		full = OUTDIR + "ispcr_offtarget/primer_alignments/{primer}.tsv",
 		aln = OUTDIR + "ispcr_offtarget/primer_alignments/{primer}_all.aln",
 	params:
-		lookup = OUTDIR + "ispcr_offtarget/duplicates_offtarget.tab"
+		outdir = OUTDIR,
+		lookup = OUTDIR + "ispcr_offtarget/duplicates_offtarget.tab",
+		use_assembly = USE_ASSEMBLY
 	conda: "../envs/primer_mismatch.yaml"
 	shell:
 		"""
-		if [[ -s {params.lookup} ]]; then 
-			Rscript scripts/merge_duplicates.R {params.lookup} {input.aln} {output.full}
-			awk -F "," '{{ print ">"$1, $3, $4, $5, $6, "\\n"$7 }}' {output.full} > {output.aln}
+		if [[ {params.use_assembly} == "yes" ]]
+		then
+			lookup={params.outdir}/offtarget_assembly_accession.txt
 		else
-			Rscript scripts/merge_duplicates.R NULL {input.aln} {output.full}
-			awk -F "," '{{ print ">"$1, $3, $4, $5, $6, "\\n"$7 }}' {output.full} > {output.aln}
+			lookup=NULL
+		fi
+
+		if [[ -s {params.lookup} ]]; then 
+			Rscript scripts/merge_duplicates.R {params.lookup} {input.aln} {output.full} $lookup
+			awk -F "," '{{ print ">"$1, $2, $3, $4, $5, "\\n"$6 }}' {output.full} > {output.aln}
+		else
+			Rscript scripts/merge_duplicates.R NULL {input.aln} {output.full} $lookup
+			awk -F "," '{{ print ">"$1, $2, $3, $4, $5, "\\n"$6 }}' {output.full} > {output.aln}
 		fi
 		"""
 
@@ -161,6 +180,7 @@ rule parse_aln_target:
 		"""
 		Rscript scripts/get_mismatches_primer.R {input.aln} {output.tsv} {params.oriprimers}
 		"""
+
 
 rule parse_aln_offtarget:
 	input:

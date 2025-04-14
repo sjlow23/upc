@@ -71,24 +71,42 @@ rule make_alignment_missing:
 		outdir = OUTDIR,
 		targetdir = GENOMES_TARGET,
 		alndir = OUTDIR + "check_alignments",
-		mode = "primer"
+		mode = "primer",
+		segmentdir = OUTDIR + "split_segments",
+		use_assembly = USE_ASSEMBLY
 	conda: "../envs/msaplot.yaml",
 	threads: CPU
 	shell:
 		"""
-		if grep -qw "Not amplified" {input.primerstatus}; then
+		if grep -qw "Not amplified" {input.primerstatus} && [[ {params.use_assembly} == "no" ]]; then
 			mkdir -p {params.alndir}
 			cut -f1 {input.primers} | sort | uniq > {params.outdir}/primerlist.txt
 
-			./scripts/missing_alignments.sh \
-			{params.outdir}/primerlist.txt \
-			{params.targetdir} \
-			{params.alndir} \
-			{input.grouped} \
-			{input.primerstatus} \
-			{input.primers} \
-			{params.mode} \
-			{threads}
+			if [[ {params.use_assembly} == "no" ]]
+			then
+				./scripts/missing_alignments.sh \
+				{params.outdir}/primerlist.txt \
+				{params.targetdir} \
+				{params.alndir} \
+				{input.grouped} \
+				{input.primerstatus} \
+				{input.primers} \
+				{params.mode} \
+				{threads}
+			fi
+
+				# mkdir -p {params.segmentdir}
+				# ./scripts/split_fasta.sh {params.targetdir} {params.segmentdir} {params.outdir}/target_assembly_accession.txt
+				# ./scripts/missing_alignments_assembly.sh \
+				# {params.outdir}/primerlist.txt \
+				# {params.targetdir} \
+				# {params.alndir} \
+				# {params.segmentdir} \
+				# {input.grouped} \
+				# {input.primerstatus} \
+				# {input.primers} \
+				# {params.mode} \
+				# {threads}
 
 			# Merge png plots
 			magick convert {params.alndir}/*.png -bordercolor white -border 0x150 -append {output.msaplot}
@@ -115,12 +133,13 @@ rule make_probe_missing:
 		targetdir = GENOMES_TARGET,
 		alndir = OUTDIR + "check_alignments",
 		probes = OUTDIR + "probes_expand.txt",
-		mode = "probe"
+		mode = "probe",
+		use_assembly = USE_ASSEMBLY
 	conda: "../envs/msaplot.yaml",
 	threads: CPU
 	shell:
 		"""
-		if grep -qw "Not present" {input.probestatus}; then
+		if grep -qw "Not present" {input.probestatus} && [[ {params.use_assembly} == "no" ]]; then
 			mkdir -p {params.alndir}
 			cut -f1 {params.probes} | sort | uniq > {params.outdir}/probelist.txt
 

@@ -175,7 +175,7 @@ highlight_mismatch <- function(binding_site, positions, mytype) {
 	} else {
 		bg_color <- "#DAB1DA"  # Light purple for probe
 	}
-	pos <- as.numeric(strsplit(positions, ",")[[1]])
+	pos <- as.numeric(strsplit(as.character(positions), ",")[[1]])
 	chars <- strsplit(binding_site, "")[[1]]
 
 	# Loop through and highlight text

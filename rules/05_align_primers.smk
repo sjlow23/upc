@@ -115,7 +115,7 @@ rule merge_duplicates_target:
 		aln = OUTDIR + "ispcr_target/primer_alignments/{primer}_all.aln",
 	params:
 		outdir = OUTDIR,
-		lookup = OUTDIR + "ispcr_target/duplicates_target.tab",
+		#lookup = OUTDIR + "ispcr_target/duplicates_target.tab",
 		use_assembly = USE_ASSEMBLY
 	conda: "../envs/primer_mismatch.yaml"
 	shell:
@@ -123,16 +123,14 @@ rule merge_duplicates_target:
 		if [[ {params.use_assembly} == "yes" ]]
 		then
 			lookup={params.outdir}/target_assembly_accession.txt
-		else
-			lookup=NULL
 		fi
 
-		if [[ -s {params.lookup} ]]; then 
-			Rscript scripts/merge_duplicates.R {params.lookup} {input.aln} {output.full} $lookup
-			awk -F "," '{{ print ">"$1, $2, $3, $4, $5, "\\n"$6 }}' {output.full} > {output.aln}
-		else
+		if [[ {params.use_assembly} == "yes" ]]; then 
 			Rscript scripts/merge_duplicates.R NULL {input.aln} {output.full} $lookup
-			awk -F "," '{{ print ">"$1, $2, $3, $4, $5, "\\n"$6 }}' {output.full} > {output.aln}
+			awk -F "," '{{ print ">"$6, $1, $2, $3, $4, "\\n"$5 }}' {output.full} > {output.aln}
+		else
+			Rscript scripts/merge_duplicates.R NULL {input.aln} {output.full} NULL
+			awk -F "," '{{ print ">"$6, $1, $2, $3, $4, "\\n"$5 }}' {output.full} > {output.aln}
 		fi
 		"""
 

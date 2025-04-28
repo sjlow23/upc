@@ -166,16 +166,16 @@ checkpoint missing_samples:
 		if [[ {params.use_assembly} == "yes" ]]
 		then
 			sort -k1,1 {params.resultdir}/hits.txt > {params.resultdir}/hits.txt.sorted
-			 join -t $'\t' -1 1 -2 1 {params.resultdir}/hits.txt.sorted {params.outdir}/target_assembly_accession.txt | \
-			 	awk '{{ print $3, $2 }}' OFS="\t" | \
-                sort -k2,2 > {params.resultdir}/hits_acc.txt
+			 join -t $'\\t' -1 1 -2 1 {params.resultdir}/hits.txt.sorted {params.outdir}/target_assembly_accession.txt | \
+			 	awk '{{ print $3, $2 }}' OFS="\\t" | \
+				sort -k2,2 > {params.resultdir}/hits_acc.txt
 				mv {params.resultdir}/hits_acc.txt {params.resultdir}/hits.txt
 				rm {params.resultdir}/hits.txt.sorted
 		fi
 
 		#Get ori primer
 		sort -k2,2 {params.outdir}/primers_expand.txt > {params.outdir}/primers_expand.sorted.txt
-		join -t $'\t' -1 2 -2 2 -e NA -o 1.1,1.2,2.1 {params.resultdir}/hits.txt {params.outdir}/primers_expand.sorted.txt > {params.resultdir}/hits2.txt
+		join -t $'\\t' -1 2 -2 2 -e NA -o 1.1,1.2,2.1 {params.resultdir}/hits.txt {params.outdir}/primers_expand.sorted.txt > {params.resultdir}/hits2.txt
 		mv {params.resultdir}/hits2.txt {params.resultdir}/hits.txt
 
 		if [[ {params.subsample} == "no" ]]
@@ -219,7 +219,7 @@ rule get_missing_amplicons:
 	params:
 		outdir = OUTDIR,
 		primers = OUTDIR + "primers.txt",
-        primers_expand = OUTDIR + "primers_expand.txt",
+		primers_expand = OUTDIR + "primers_expand.txt",
 		primerdir = OUTDIR + "target_nohits/",
 		resultdir = OUTDIR + "bbmap_amplicons/",
 		#max_mismatch = MAX_MISMATCH,
@@ -251,10 +251,10 @@ rule get_missing_amplicons:
 				cat {params.primerdir}/"$primer".missing | awk '{{ print "./scripts/extract_amplicon_collapsed.sh", $0, "'$mytargetdir'", "'$myresultdir'", "'$myprimerdir'", "'$myprimer'", "'$myprimerexpand'" }}' > {params.resultdir}/run.sh
 				cat {params.resultdir}/run.sh | parallel -j {threads}
 
-                if [[ -s {params.resultdir}/*_"$primer"_amp.fasta ]]; then
-				    cat {params.resultdir}/*_amp.fasta > {params.resultdir}/"$primer"_merged.fna
-                    rm {params.resultdir}/*_amp.fasta
-                fi
+				if [[ $(find {params.resultdir} -type f -name "*_amp.fasta" | wc -l) -gt 0 ]]; then
+					cat {params.resultdir}/*_amp.fasta > {params.resultdir}/"$primer"_merged.fna
+					rm {params.resultdir}/*_amp.fasta
+				fi
 				rm {params.resultdir}/input.txt {params.resultdir}/run.sh
 			fi
 		done < {params.outdir}/primerlist.txt

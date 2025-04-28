@@ -11,15 +11,15 @@ args <- commandArgs(trailingOnly = TRUE)
 aln <- fread(args[2], header = FALSE, sep = "\t")
 output <- args[3]
 
-if (!is.null(args[4])) {
+if (args[4] != "NULL") {
 	assembly_lookup <- fread(args[4], header = FALSE, sep= "\t")
+    names(assembly_lookup) <- c("accession", "assembly_accession")
 }
 
-
 names(aln) <- c("representative", "primer_set", "size", "fwd", "rev", "alignment")
-names(assembly_lookup) <- c("accession", "assembly_accession")
 
-if (file.exists(args[1])) {
+
+if (args[1] != "NULL") {
 	# if duplicates present
 	lookup <- fread(args[1], header = F, sep = "\t")
 	names(lookup) <- c("genome", "representative")
